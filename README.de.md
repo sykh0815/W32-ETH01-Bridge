@@ -29,8 +29,10 @@ wird per Kabel an den WT32-ETH01 angeschlossen, der WT32-ETH01 verbindet sich pe
   <img src="docs/webinterface.png" alt="Webinterface der Bridge im Bridge-Modus: WLAN-Empfang, Infos zum Gerät am LAN-Port, WLAN-Suche und Auswahl der Betriebsart" width="420">
 </p>
 
-Das Webinterface im Bridge-Modus: WLAN-Empfang, Daten des Geräts am LAN-Port (IP-Adresse vom
-Router, Link-Geschwindigkeit, Paketzähler), WLAN-Suche und Auswahl der Betriebsart.
+Das Webinterface (hier auf Englisch, Version 2.4) im Bridge-Modus: Sprachumschalter, Warnung
+solange das Einrichtungs-WLAN kein Passwort hat, WLAN-Empfang, Daten des Geräts am LAN-Port
+(IP-Adresse vom Router, Link-Geschwindigkeit, Paketzähler), Router-WLAN, Betriebsart und Passwort
+des Einrichtungs-WLANs.
 
 ## Funktionen
 

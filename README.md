@@ -26,11 +26,12 @@ connected to the WT32-ETH01 by cable, and the WT32-ETH01 connects to your router
 ## Web interface
 
 <p align="center">
-  <img src="docs/webinterface.png" alt="Web interface in bridge mode: WiFi signal, LAN device info, WiFi scan and operating mode selection" width="420">
+  <img src="docs/webinterface.png" alt="Web interface in bridge mode: language switch, open setup WiFi warning, WiFi signal, LAN device info, operating mode and setup WiFi password" width="420">
 </p>
 
-The web interface in bridge mode: WiFi signal strength, details of the device on the LAN port
-(IP address from the router, link speed, packet counters), WiFi scan and operating mode selection.
+The web interface (English, version 2.4) in bridge mode: language switch, warning while the setup
+WiFi has no password, WiFi signal strength, details of the device on the LAN port (IP address from
+the router, link speed, packet counters), router WiFi, operating mode and setup WiFi password.
 The interface is available in English and German and can be switched with the flag buttons at the
 top right.
 

@@ -1,14 +1,31 @@
-# WT32-ETH01 Ethernet-WLAN-Bridge
+# WT32-ETH01 Ethernet-WLAN-Bridge (ESP32 Ethernet to WiFi Bridge)
+
+[![Version](https://img.shields.io/badge/Version-2.1-1263a6)](#versionen)
+[![Plattform](https://img.shields.io/badge/ESP32-WT32--ETH01-green)](#hardware)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-Arduino%20Core%203.x-orange?logo=platformio)](#bauen-und-flashen)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-yellow)](LICENSE)
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/sykh)
 
 **Version 2.1**
 
 Firmware für das **WT32-ETH01 v1.4** (ESP32 + LAN8720), die ein Gerät mit LAN-Anschluss per WLAN
-ins Netzwerk bringt. Das Gerät wird per Kabel an den WT32-ETH01 angeschlossen, der WT32-ETH01
-verbindet sich per WLAN mit dem Router.
+ins Netzwerk bringt: ein **WLAN-Adapter für Geräte ohne WLAN** oder eine **WLAN-Bridge für den
+Ethernet-Anschluss**, z. B. für Drucker, Smart-TV, Spielkonsole, NAS, SPS oder Messgeräte. Das Gerät
+wird per Kabel an den WT32-ETH01 angeschlossen, der WT32-ETH01 verbindet sich per WLAN mit dem Router.
+
+<p align="center">
+  <img src="docs/wt32-eth01.svg" alt="WT32-ETH01 Board mit RJ45-Buchse, LAN8720 PHY und ESP32-Modul (Illustration)" width="480">
+</p>
 
 ```
 [ Gerät mit LAN ] ──Kabel── [ WT32-ETH01 ] ))) WLAN ))) [ Router ] ── Internet
 ```
+
+> **English summary:** Arduino/PlatformIO firmware that turns a WT32-ETH01 (ESP32 + LAN8720) into an
+> **Ethernet to WiFi bridge / wireless client adapter**. Two modes: **NAT** (own DHCP subnet, several
+> devices) and **Bridge** (the wired device gets its IP directly from your router, MAC translation like
+> Espressif's sta2eth). Web interface with WiFi scan, signal strength and LAN client info.
+> No external libraries.
 
 ## Webinterface
 
@@ -37,7 +54,8 @@ Router, Link-Geschwindigkeit, Paketzähler), WLAN-Suche und Auswahl der Betriebs
 
 ## Hardware
 
-- WT32-ETH01 v1.4
+- WT32-ETH01 v1.4 von Wireless-Tag: ESP32-Modul, LAN8720-Ethernet-PHY, RJ45-Buchse (10/100 Mbit/s),
+  Versorgung mit 5 V **oder** 3,3 V
 - USB-TTL-Adapter mit **3,3 V**-Logik zum Flashen (z. B. CP2102 oder CH340)
 
 | Adapter | WT32-ETH01 |
@@ -49,6 +67,25 @@ Router, Link-Geschwindigkeit, Paketzähler), WLAN-Suche und Auswahl der Betriebs
 
 Zum Flashen **IO0 mit GND verbinden** und dann das Board einschalten. Nach dem Flashen die Brücke
 entfernen und neu starten.
+
+### Pinbelegung der Stiftleisten
+
+Laut [Wireless-Tag-Wiki](https://wiki.wireless-tag.com/docs/en/WT32-ETH01/board_features.html):
+
+| Leiste 1 | Funktion | Leiste 2 | Funktion |
+|----------|----------|----------|----------|
+| EN | Enable (aktiv high) | GND | Masse |
+| CFG | IO32 (Werksreset) | IO39 | nur Eingang |
+| 485_EN | IO33 (RS485-Enable) | IO36 | nur Eingang |
+| RXD | IO5 (UART2 RX) | IO15 | GPIO |
+| TXD | IO17 (UART2 TX) | IO14 | GPIO |
+| GND | Masse | IO12 | GPIO |
+| 3V3 | 3,3 V Ein-/Ausgang | IO35 | nur Eingang |
+| GND | Masse | IO4 | GPIO |
+| 5V | 5 V Ein-/Ausgang | IO2 | GPIO |
+| LINK | Link-LED | GND | Masse |
+
+Zum Flashen dienen die Programmier-Pins **TXD0 (IO1), RXD0 (IO3), GND, 3V3, EN und IO0**.
 
 Verwendete Pins intern: GPIO16 (Oszillator-Enable LAN8720), GPIO23 (MDC), GPIO18 (MDIO),
 GPIO0 (50-MHz-RMII-Takt-Eingang), PHY-Adresse 1.
@@ -116,6 +153,9 @@ platformio.ini            Build-Konfiguration
 src/main.cpp              Firmware
 ANLEITUNG.md              Schritt-für-Schritt-Anleitung zum Flashen und Fehlersuche
 docs/webinterface.png     Screenshot des Webinterface
+docs/wt32-eth01.svg       Illustration des Boards
+docs/social-preview.png   Vorschaubild für GitHub
+LICENSE                   MIT-Lizenz
 backup/main_nat_only.cpp  ältere Version nur mit NAT-Modus
 ```
 
@@ -127,6 +167,12 @@ backup/main_nat_only.cpp  ältere Version nur mit NAT-Modus
 - Infos zum Gerät am LAN-Port (IP, MAC, Link-Geschwindigkeit, Paketzähler)
 - WLAN-Suche funktioniert auch, solange noch keine Router-Verbindung besteht
 - Versionsnummer im Webinterface und in der seriellen Ausgabe
+
+## Unterstützen
+
+Wenn dir das Projekt hilft, freue ich mich über einen Kaffee:
+
+<a href="https://buymeacoffee.com/sykh"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
 
 ## Fehlersuche
 
@@ -141,3 +187,8 @@ LAN-Geraet AA:BB:CC:DD:EE:FF hat 192.168.50.2 bekommen
 ```
 
 Weitere Hinweise stehen in der [ANLEITUNG.md](ANLEITUNG.md).
+
+## Lizenz
+
+Veröffentlicht unter der [MIT-Lizenz](LICENSE): Der Code darf frei verwendet, verändert und
+weitergegeben werden, auch kommerziell. Der Copyright-Hinweis muss dabei erhalten bleiben.

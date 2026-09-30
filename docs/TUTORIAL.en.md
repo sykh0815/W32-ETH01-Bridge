@@ -115,7 +115,7 @@ The blue status bar at the bottom has three important icons:
 4. Click **🔌 Serial Monitor**. Among other things you'll see:
 
    ```
-   WT32-ETH01 Ethernet-WLAN-Bridge, Firmware 2.3
+   WT32-ETH01 Ethernet-WLAN-Bridge, Firmware 2.4
    Einrichtungsseite: http://192.168.4.1
    ```
 
@@ -142,16 +142,16 @@ monitor_port = /dev/cu.usbserial-0001
 
 ## 6. Set up the bridge
 
-1. Connect your phone or laptop to the WiFi **`WT32-Bridge-Setup`**
+1. Connect your phone or laptop to the WiFi **`WT32-Bridge-Setup`**.
    On first start it is **open**, no password needed (see section 7).
-2. Open **http://192.168.4.1** in the browser.
-3. Click **Verfügbare WLANs suchen** (search for WiFi networks), tap your router's WiFi, enter the
-   password and click **Speichern und verbinden** (save and connect).
+2. Open **http://192.168.4.1** in the browser. The page follows your browser language; use the
+   flag buttons **DE / EN** at the top right to switch between German and English.
+3. Click **Search for WiFi networks**, tap your router's WiFi, enter the password and click
+   **Save and connect**.
 4. Choose the operating mode: **NAT** (own network, several devices) or **Bridge** (IP directly
-   from the router, one device). After **Übernehmen und neu starten** (apply and restart) the
-   bridge restarts.
+   from the router, one device). After **Apply and restart** the bridge restarts.
 5. Connect the device to the LAN port with a network cable. Its IP and MAC address appear under
-   "Gerät am LAN-Port" (device on the LAN port).
+   "Device on the LAN port".
 
 ---
 
@@ -164,13 +164,13 @@ The bridge uses **two different** passwords.
 This is the WiFi network the bridge creates itself so you can reach the web interface.
 
 - **On first start** the setup WiFi is **open** (no password) so you can get in right away. A
-  pulsing red warning **"Kein WLAN-Passwort gesetzt!"** (no WiFi password set) appears at the top
+  pulsing red warning **"No WiFi password set!"** appears at the top
   of the web interface until you set a password. Do this right after setup.
 - **Set or change it in the web interface:**
   1. Connect to the setup WiFi and open http://192.168.4.1.
-  2. Tap **Jetzt Passwort festlegen** (set password now) in the red warning, or scroll down to the
-     section **Einrichtungs-WLAN** (setup WiFi), and enter the password twice.
-  3. Click **Passwort festlegen** (set password) or **Passwort ändern** (change password). The
+  2. Tap **Set a password now** in the red warning, or scroll down to the section
+     **Setup WiFi**, and enter the password twice.
+  3. Click **Set password** or **Change password**. The
      bridge restarts.
   4. On your phone or laptop, "forget" the WiFi `WT32-Bridge-Setup` and reconnect with the new
      password.
@@ -191,8 +191,8 @@ This is the WiFi network the bridge creates itself so you can reach the web inte
 
 - **Where is it?** Not in the code. You enter it in the web interface, and the bridge stores it in
   the ESP32's flash memory (NVS). It survives power loss and firmware updates.
-- **Change it:** enter the new password in the web interface under **Router-WLAN** and click
-  **Speichern und verbinden**. If the password field is left empty, the bridge keeps the old one.
+- **Change it:** enter the new password in the web interface under **Router WiFi** and click
+  **Save and connect**. If the password field is left empty, the bridge keeps the old one.
 - **Show it:** for security reasons the web interface never displays the stored password.
 - **Erase everything** (router credentials, operating mode and setup WiFi password): erase the whole flash and upload
   the firmware again.
@@ -240,7 +240,12 @@ If the project's **Releases** section offers ready-made files (`bootloader.bin`,
    | `0xe000` | `boot_app0.bin` |
    | `0x10000` | `firmware.bin` |
 
+   Easier: add only the file `wt32-eth01-bridge-v…-full.bin` at address `0x0`; it contains all
+   four parts.
+
 4. Click **Program**, then disconnect IO0 from GND and restart.
+
+Updating from an older version keeps all settings (as long as you do not choose "Erase Flash" in the web flasher).
 
 If you build it yourself, the files are in `.pio/build/wt32-eth01/` after `pio run`
 (`boot_app0.bin` is in the PlatformIO package `framework-arduinoespressif32` under

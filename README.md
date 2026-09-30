@@ -2,13 +2,13 @@
 
 🇬🇧 **English** | 🇩🇪 [Deutsch](README.de.md)
 
-[![Version](https://img.shields.io/badge/Version-2.3-1263a6)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-2.4-1263a6)](CHANGELOG.md)
 [![Platform](https://img.shields.io/badge/ESP32-WT32--ETH01-green)](#hardware)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-Arduino%20Core%203.x-orange?logo=platformio)](#build-and-flash)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/sykh)
 
-**Version 2.3** – see the [changelog](CHANGELOG.md)
+**Version 2.4** – see the [changelog](CHANGELOG.md)
 
 Firmware for the **WT32-ETH01 v1.4** (ESP32 + LAN8720) that brings a device with an Ethernet port
 into your WiFi network: a **WiFi adapter for devices without WiFi**, or a **wireless bridge for the
@@ -31,7 +31,8 @@ connected to the WT32-ETH01 by cable, and the WT32-ETH01 connects to your router
 
 The web interface in bridge mode: WiFi signal strength, details of the device on the LAN port
 (IP address from the router, link speed, packet counters), WiFi scan and operating mode selection.
-The interface itself is in German.
+The interface is available in English and German and can be switched with the flag buttons at the
+top right.
 
 ## Features
 
@@ -41,7 +42,8 @@ The interface itself is in German.
     Data rate up to approx. 10 Mbit/s.
   - **Bridge – straight into your home network** (experimental): the LAN device gets its IP address
     **directly from your router**. One device only, IPv4 only. Data rate above 30 Mbit/s.
-- **Web interface** via a dedicated setup WiFi (password changeable in the web interface):
+- **Web interface** in **English and German** (switchable via flag buttons) via a dedicated setup
+  WiFi (password changeable in the web interface):
   - WiFi scan and entry of the router credentials
   - WiFi signal strength
   - Info about the device on the LAN port: IP address, MAC address, link speed/duplex,
@@ -117,8 +119,8 @@ The bridge uses two passwords:
 
 | Password | Where is it stored? | How to change it? |
 |----------|---------------------|-------------------|
-| **Setup WiFi** `WT32-Bridge-Setup` (initially **open**, no password) | in the ESP32's flash (NVS); an optional default can be set in `SETUP_AP_PASSWORD` in `src/main.cpp` | in the web interface under "Einrichtungs-WLAN" (8–63 characters), the bridge restarts |
-| **Router WiFi** | in the ESP32's flash (NVS), not in the code | enter it again in the web interface under "Router-WLAN" and click "Speichern und verbinden" |
+| **Setup WiFi** `WT32-Bridge-Setup` (initially **open**, no password) | in the ESP32's flash (NVS); an optional default can be set in `SETUP_AP_PASSWORD` in `src/main.cpp` | in the web interface under "Setup WiFi" (8–63 characters), the bridge restarts |
+| **Router WiFi** | in the ESP32's flash (NVS), not in the code | enter it again in the web interface under "Router WiFi" and click "Save and connect" |
 
 > **Important:** on first start the setup WiFi is open, so anyone in range could change the
 > settings. The web interface shows a prominent red warning until you set a password; do this
@@ -166,6 +168,7 @@ docs/TUTORIAL.de.md       Tutorial: Kompilieren und Flashen (Deutsch)
 docs/webinterface.png     screenshot of the web interface
 docs/wt32-eth01.svg       board illustration
 docs/social-preview.png   GitHub preview image
+tools/release.sh          builds the firmware and creates a GitHub release
 backup/main_nat_only.cpp  older version with NAT mode only
 CHANGELOG.md              changelog (English)
 CHANGELOG.de.md           Änderungsprotokoll (Deutsch)
@@ -174,7 +177,8 @@ LICENSE                   MIT license
 
 ## Versions
 
-Current version: **2.3** – setup WiFi starts without a password, with a prominent warning in the web interface until one is set.
+Current version: **2.4** – web interface in English and German with a language switch.
+Ready-made firmware files are attached to each [release](../../releases).
 All changes are listed in the **[changelog](CHANGELOG.md)**.
 
 ## Support
@@ -188,7 +192,7 @@ If this project helps you, I'd be happy about a coffee:
 The serial output (115200 baud) shows the current state, for example:
 
 ```
-WT32-ETH01 Ethernet-WLAN-Bridge, Firmware 2.3
+WT32-ETH01 Ethernet-WLAN-Bridge, Firmware 2.4
 Betriebsart: NAT
 DHCP server started on interface ETH_LAN with IP: 192.168.50.1
 Ethernet-LAN: 192.168.50.1, DHCP-Server laeuft

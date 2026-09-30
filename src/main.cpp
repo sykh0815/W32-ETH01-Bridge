@@ -25,6 +25,11 @@ int wifiPercent();
 String signalClass(int percent);
 String encryptionName(wifi_auth_mode_t mode);
 String pageHeader(const String &title);
+String pageFooter();
+void detectLanguage();
+void setLanguage();
+String languageSwitchHtml();
+inline const char *T(const char *de, const char *en);
 String signalMeterHtml();
 String macToString(const uint8_t *mac);
 String lanStatusJson();
@@ -48,7 +53,7 @@ void startLanServices();
 
 constexpr int ETH_PHY_POWER_PIN = 16;
 constexpr int ETH_PHY_ADDRESS = 1;
-constexpr char FIRMWARE_VERSION[] = "2.3";
+constexpr char FIRMWARE_VERSION[] = "2.4";
 constexpr char SETUP_AP_SSID[] = "WT32-Bridge-Setup";
 // Standard-Passwort des Einrichtungs-WLANs. Leer = offenes WLAN beim ersten Start; das Webinterface
 // fordert dann auffaellig dazu auf, ein Passwort festzulegen.
@@ -142,7 +147,7 @@ String signalClass(int percent) {
 
 String encryptionName(wifi_auth_mode_t mode) {
   switch (mode) {
-    case WIFI_AUTH_OPEN: return "Offen";
+    case WIFI_AUTH_OPEN: return T("Offen", "Open");
     case WIFI_AUTH_WEP: return "WEP";
     case WIFI_AUTH_WPA_PSK: return "WPA";
     case WIFI_AUTH_WPA2_PSK: return "WPA2";
@@ -150,7 +155,7 @@ String encryptionName(wifi_auth_mode_t mode) {
     case WIFI_AUTH_WPA2_ENTERPRISE: return "WPA2-Enterprise";
     case WIFI_AUTH_WPA3_PSK: return "WPA3";
     case WIFI_AUTH_WPA2_WPA3_PSK: return "WPA2/WPA3";
-    default: return "Unbekannt";
+    default: return T("Unbekannt", "Unknown");
   }
 }
 
@@ -345,15 +350,55 @@ esp_err_t onWifiFrame(void *buffer, uint16_t len, void *eb) {
 }
 
 // ---------------------------------------------------------------------------
+// Sprache des Webinterface (Deutsch/Englisch)
+// ---------------------------------------------------------------------------
+
+bool uiEnglish = false;  // wird zu Beginn jeder Anfrage per detectLanguage() gesetzt
+
+// Waehlt den Text in der aktuellen Sprache
+inline const char *T(const char *de, const char *en) { return uiEnglish ? en : de; }
+
+// Sprache aus Cookie "lang" (vom Umschalter gesetzt), sonst aus dem Browser (Accept-Language)
+void detectLanguage() {
+  const String cookie = webServer.header("Cookie");
+  if (cookie.indexOf("lang=en") >= 0) { uiEnglish = true; return; }
+  if (cookie.indexOf("lang=de") >= 0) { uiEnglish = false; return; }
+  String accept = webServer.header("Accept-Language");
+  accept.toLowerCase();
+  uiEnglish = !accept.startsWith("de");
+}
+
+// /lang?l=de oder /lang?l=en: Sprache fuer ein Jahr im Browser merken und zur Startseite
+void setLanguage() {
+  const bool english = webServer.arg("l") == "en";
+  webServer.sendHeader("Set-Cookie", english ? "lang=en; Path=/; Max-Age=31536000" : "lang=de; Path=/; Max-Age=31536000");
+  webServer.sendHeader("Location", "/");
+  webServer.send(302, "text/plain", "");
+}
+
+String languageSwitchHtml() {
+  const char *flagDe = "<svg viewBox='0 0 5 3' aria-hidden='true'><rect width='5' height='1' fill='#000'/><rect y='1' width='5' height='1' fill='#dd0000'/><rect y='2' width='5' height='1' fill='#ffce00'/></svg>";
+  const char *flagEn = "<svg viewBox='0 0 60 30' aria-hidden='true'><clipPath id='uk1'><path d='M0 0v30h60V0z'/></clipPath><clipPath id='uk2'><path d='M30 15h30v15zv15H0zH0V0zV0h30z'/></clipPath>"
+    "<g clip-path='url(#uk1)'><path d='M0 0v30h60V0z' fill='#012169'/><path d='M0 0l60 30m0-30L0 30' stroke='#fff' stroke-width='6'/>"
+    "<path d='M0 0l60 30m0-30L0 30' clip-path='url(#uk2)' stroke='#c8102e' stroke-width='4'/><path d='M30 0v30M0 15h60' stroke='#fff' stroke-width='10'/>"
+    "<path d='M30 0v30M0 15h60' stroke='#c8102e' stroke-width='6'/></g></svg>";
+  return String("<nav class='lang' aria-label='Sprache / Language'>") +
+    "<a href='/lang?l=de' hreflang='de' class='" + (uiEnglish ? "" : "on") + "' title='Deutsch'>" + flagDe + "DE</a>" +
+    "<a href='/lang?l=en' hreflang='en' class='" + (uiEnglish ? "on" : "") + "' title='English'>" + flagEn + "EN</a></nav>";
+}
+
+// ---------------------------------------------------------------------------
 // Webinterface
 // ---------------------------------------------------------------------------
 
 String pageHeader(const String &title) {
-  return "<!doctype html><html lang='de'><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>" + title + "</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:30px auto;padding:0 18px;background:#f2f6fa;color:#17212b}.card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 18px #0002}h1{margin-top:0;color:#1263a6}h2{font-size:18px;margin:26px 0 4px}.status{padding:12px 14px;margin:12px 0;border-radius:10px;background:#edf5fd}.ok{color:#08783d}.wait{color:#875b00}.bad{color:#a32020}.meter{display:flex;align-items:flex-end;gap:4px;height:38px;margin:10px 0 3px}.bar{width:13px;border-radius:3px 3px 0 0;background:#d3dae1}.bar.on.good{background:#1a9b59}.bar.on.fair{background:#dd9a17}.bar.on.weak{background:#ce3e3e}label{display:block;font-weight:bold;margin-top:16px}input{box-sizing:border-box;width:100%;padding:12px;margin-top:6px;border:1px solid #aac;border-radius:8px;font-size:16px}label.opt{font-weight:normal;margin-top:10px}label.opt input{width:auto;margin:0 8px 0 0}label.mode{display:flex;gap:14px;align-items:flex-start;font-weight:normal;margin-top:12px;padding:14px;border:2px solid #cbd8e3;border-radius:12px;cursor:pointer;background:#fff}label.mode:has(input:checked){border-color:#1263a6;background:#f3f8fd}label.mode input{width:auto;margin:4px 0 0}.mode svg{flex:none;width:46px;height:46px;color:#1263a6}.mode b{display:block;font-size:17px;margin-bottom:4px}.mode p{margin:6px 0 0;color:#4b5865;font-size:14px;line-height:1.4}.badge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:bold}.badge.slow{background:#fdf1dc;color:#875b00}.badge.fast{background:#e3f4ea;color:#08783d}.alert{display:flex;gap:14px;align-items:flex-start;background:#c62828;color:#fff;padding:16px 18px;border-radius:12px;margin:0 0 18px;line-height:1.45;box-shadow:0 0 0 4px #f8d4d4;animation:pulse 2s ease-in-out infinite}.alert svg{flex:none;width:34px;height:34px}.alert a{display:inline-block;margin-top:8px;color:#fff;font-weight:bold;text-decoration:underline}@keyframes pulse{50%{box-shadow:0 0 0 8px #f8d4d4}}.apbox.open{border:2px solid #c62828;background:#fdecec;border-radius:12px;padding:4px 16px 16px}button{margin-top:22px;background:#1263a6;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-size:16px;cursor:pointer}.secondary{margin-top:12px;background:#587080}.network{display:block;width:100%;text-align:left;margin-top:8px;padding:11px;border:1px solid #cbd8e3;border-radius:8px;background:#f8fbfe;color:#17212b}.network b{display:block}.network small,small{color:#4b5865}table.info{width:100%;border-collapse:collapse;margin-top:8px}table.info td{padding:5px 4px;border-top:1px solid #d6e2ee;vertical-align:top}table.info td:first-child{color:#4b5865;width:45%}</style></head><body><div class='card'>";
+  return String("<!doctype html><html lang='") + (uiEnglish ? "en" : "de") + "'><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>" + title + "</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:30px auto;padding:0 18px;background:#f2f6fa;color:#17212b}.card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 18px #0002}h1{margin-top:0;color:#1263a6}h2{font-size:18px;margin:26px 0 4px}.status{padding:12px 14px;margin:12px 0;border-radius:10px;background:#edf5fd}.ok{color:#08783d}.wait{color:#875b00}.bad{color:#a32020}.meter{display:flex;align-items:flex-end;gap:4px;height:38px;margin:10px 0 3px}.bar{width:13px;border-radius:3px 3px 0 0;background:#d3dae1}.bar.on.good{background:#1a9b59}.bar.on.fair{background:#dd9a17}.bar.on.weak{background:#ce3e3e}label{display:block;font-weight:bold;margin-top:16px}input{box-sizing:border-box;width:100%;padding:12px;margin-top:6px;border:1px solid #aac;border-radius:8px;font-size:16px}label.mode{display:flex;gap:14px;align-items:flex-start;font-weight:normal;margin-top:12px;padding:14px;border:2px solid #cbd8e3;border-radius:12px;cursor:pointer;background:#fff}label.mode:has(input:checked){border-color:#1263a6;background:#f3f8fd}label.mode input{width:auto;margin:4px 0 0}.mode svg{flex:none;width:46px;height:46px;color:#1263a6}.mode b{display:block;font-size:17px;margin-bottom:4px}.mode p{margin:6px 0 0;color:#4b5865;font-size:14px;line-height:1.4}.badge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:bold}.badge.slow{background:#fdf1dc;color:#875b00}.badge.fast{background:#e3f4ea;color:#08783d}.alert{display:flex;gap:14px;align-items:flex-start;background:#c62828;color:#fff;padding:16px 18px;border-radius:12px;margin:0 0 18px;line-height:1.45;box-shadow:0 0 0 4px #f8d4d4;animation:pulse 2s ease-in-out infinite}.alert svg{flex:none;width:34px;height:34px}.alert a{display:inline-block;margin-top:8px;color:#fff;font-weight:bold;text-decoration:underline}@keyframes pulse{50%{box-shadow:0 0 0 8px #f8d4d4}}.apbox.open{border:2px solid #c62828;background:#fdecec;border-radius:12px;padding:4px 16px 16px}.lang{display:flex;justify-content:flex-end;gap:6px;margin:-8px -8px 8px 0}.lang a{display:flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid #cbd8e3;border-radius:8px;text-decoration:none;color:#4b5865;font-size:13px;font-weight:bold}.lang a.on{border-color:#1263a6;background:#eaf3fc;color:#1263a6}.lang svg{width:24px;height:15px;border-radius:2px;box-shadow:0 0 0 1px #0003}button{margin-top:22px;background:#1263a6;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-size:16px;cursor:pointer}.secondary{margin-top:12px;background:#587080}.network{display:block;width:100%;text-align:left;margin-top:8px;padding:11px;border:1px solid #cbd8e3;border-radius:8px;background:#f8fbfe;color:#17212b}.network b{display:block}.network small,small{color:#4b5865}table.info{width:100%;border-collapse:collapse;margin-top:8px}table.info td{padding:5px 4px;border-top:1px solid #d6e2ee;vertical-align:top}table.info td:first-child{color:#4b5865;width:45%}</style></head><body><div class='card'>";
 }
 
+String pageFooter() { return "</div></body></html>"; }
+
 String signalMeterHtml() {
-  return "<div class='status'><b>WLAN-Empfang</b><div class='meter' id='meter'><i class='bar' style='height:20%'></i><i class='bar' style='height:40%'></i><i class='bar' style='height:65%'></i><i class='bar' style='height:100%'></i></div><span id='signalText'>Wird geladen...</span></div>";
+  return String("<div class='status'><b>") + T("WLAN-Empfang", "WiFi signal") + "</b><div class='meter' id='meter'><i class='bar' style='height:20%'></i><i class='bar' style='height:40%'></i><i class='bar' style='height:65%'></i><i class='bar' style='height:100%'></i></div><span id='signalText'>" + T("Wird geladen...", "Loading...") + "</span></div>";
 }
 
 String lanStatusJson() {
@@ -394,7 +439,7 @@ String lanStatusJson() {
 
 void showStatus() {
   const bool hasRouterIp = bridgeMode == MODE_NAT && wifiConnected;
-  const String json = "{\"version\":\"" + String(FIRMWARE_VERSION) + "\",\"mode\":\"" + String(bridgeMode == MODE_BRIDGE ? "bridge" : "nat") + "\",\"wifi\":" + String(wifiConnected ? "true" : "false") + ",\"ssid\":\"" + jsonEscape(WiFi.SSID()) + "\",\"ip\":\"" + (hasRouterIp ? WiFi.localIP().toString() : String("")) + "\",\"rssi\":" + String(wifiConnected ? WiFi.RSSI() : 0) + ",\"percent\":" + String(wifiPercent()) + ",\"quality\":\"" + signalClass(wifiPercent()) + "\",\"ethLink\":" + String(ethernetLinkUp ? "true" : "false") + ",\"dhcp\":" + String(ethernetLanReady ? "true" : "false") + ",\"lan\":" + lanStatusJson() + "}";
+  const String json = "{\"version\":\"" + String(FIRMWARE_VERSION) + "\",\"mode\":\"" + String(bridgeMode == MODE_BRIDGE ? "bridge" : "nat") + "\",\"wifi\":" + String(wifiConnected ? "true" : "false") + ",\"ssid\":\"" + jsonEscape(WiFi.SSID()) + "\",\"ip\":\"" + (hasRouterIp ? WiFi.localIP().toString() : String("")) + "\",\"rssi\":" + String(wifiConnected ? WiFi.RSSI() : 0) + ",\"percent\":" + String(wifiPercent()) + ",\"quality\":\"" + signalClass(wifiPercent()) + "\",\"ethLink\":" + String(ethernetLinkUp ? "true" : "false") + ",\"dhcp\":" + String(ethernetLanReady ? "true" : "false") + ",\"apOpen\":" + String(setupApPassword.isEmpty() ? "true" : "false") + ",\"lan\":" + lanStatusJson() + "}";
   webServer.send(200, "application/json", json);
 }
 
@@ -409,6 +454,7 @@ void resumeRouterConnection() {
 // Asynchroner WLAN-Scan: /networks?start=1 startet, danach fragt die Seite /networks ab,
 // bis das Ergebnis da ist. So blockiert der Scan den Webserver nicht.
 void showNetworks() {
+  detectLanguage();  // fuer die Namen der Verschluesselung
   int state = WiFi.scanComplete();
   if (webServer.hasArg("start") && state != WIFI_SCAN_RUNNING) {
     WiFi.scanDelete();
@@ -472,46 +518,67 @@ void showNetworks() {
   webServer.send(200, "application/json", json);
 }
 
+// Texte fuer das JavaScript der Startseite
+const char *const JS_TEXT_DE = "var L={notConnected:'Nicht mit dem Router verbunden',noCable:'Kein Kabel erkannt. Stecke das Kabel am Endger\\u00e4t und an der Bridge fest ein.',"
+  "link:'Verbindung',full:'Vollduplex',half:'Halbduplex',since:'Kabel steckt seit',device:'Ger\\u00e4t',notDetected:'noch nicht erkannt (sendet noch nichts)',"
+  "noLease:'noch keine per DHCP vergeben',ip:'IP-Adresse',unknown:'noch unbekannt',mac:'MAC-Adresse',seen:'Erkannt vor',assigned:'Adresse vergeben vor',ago:'',"
+  "addr:'Adressvergabe',byRouter:'direkt durch den Router',appears:'Ger\\u00e4t erscheint im Router als MAC',toWifi:'Frames LAN \\u2192 WLAN',toLan:'Frames WLAN \\u2192 LAN',"
+  "dropped:'Verworfen',gw:'Gateway / DNS',lease:'Lease-Dauer',bridgeMac:'MAC der Bridge (LAN)',searching:'Suche nach WLANs ...',"
+  "scanFail:'Die WLAN-Suche ist fehlgeschlagen. Bitte erneut versuchen.',none:'Keine WLANs gefunden.',hidden:'(verstecktes WLAN)',secured:' (gesichert)',"
+  "selected:'Ausgew\\u00e4hlt: ',mismatch:'Die beiden Eingaben stimmen nicht \\u00fcberein.',confirmPw:'Passwort \\u00e4ndern? Die Bridge startet danach neu.'};";
+const char *const JS_TEXT_EN = "var L={notConnected:'Not connected to the router',noCable:'No cable detected. Plug the cable firmly into the device and the bridge.',"
+  "link:'Link',full:'full duplex',half:'half duplex',since:'Cable connected for',device:'Device',notDetected:'not detected yet (not sending anything)',"
+  "noLease:'none assigned via DHCP yet',ip:'IP address',unknown:'not known yet',mac:'MAC address',seen:'Detected',assigned:'Address assigned',ago:' ago',"
+  "addr:'Address assignment',byRouter:'directly by the router',appears:'Device appears in the router with MAC',toWifi:'Frames LAN \\u2192 WiFi',toLan:'Frames WiFi \\u2192 LAN',"
+  "dropped:'Dropped',gw:'Gateway / DNS',lease:'Lease time',bridgeMac:'Bridge MAC (LAN)',searching:'Searching for WiFi networks ...',"
+  "scanFail:'The WiFi scan failed. Please try again.',none:'No WiFi networks found.',hidden:'(hidden network)',secured:' (secured)',"
+  "selected:'Selected: ',mismatch:'The two entries do not match.',confirmPw:'Change the password? The bridge will restart afterwards.'};";
+
 void showHome() {
+  detectLanguage();
   const bool bridge = bridgeMode == MODE_BRIDGE;
   String routerState;
   if (!wifiConnected) {
-    routerState = "<p class='wait'>Noch nicht mit dem Router verbunden. Speichere die Zugangsdaten unten; die Bridge versucht die Verbindung automatisch.</p>";
+    routerState = String("<p class='wait'>") + T("Noch nicht mit dem Router verbunden. Speichere die Zugangsdaten unten; die Bridge versucht die Verbindung automatisch.", "Not connected to the router yet. Save the credentials below; the bridge will connect automatically.") + "</p>";
   } else if (bridge) {
-    routerState = "<p class='ok'>Mit Router verbunden: <b>" + htmlEscape(WiFi.SSID()) + "</b></p>";
+    routerState = String("<p class='ok'>") + T("Mit Router verbunden: ", "Connected to router: ") + "<b>" + htmlEscape(WiFi.SSID()) + "</b></p>";
   } else {
-    routerState = "<p class='ok'>Mit Router verbunden: <b>" + htmlEscape(WiFi.SSID()) + "</b><br>Router-IP der Bridge: " + WiFi.localIP().toString() + "</p>";
+    routerState = String("<p class='ok'>") + T("Mit Router verbunden: ", "Connected to router: ") + "<b>" + htmlEscape(WiFi.SSID()) + "</b><br>" + T("Router-IP der Bridge: ", "Bridge IP in the router network: ") + WiFi.localIP().toString() + "</p>";
   }
 
   String ethernetState;
   if (bridge) {
-    ethernetState = ethernetLanReady ? "<p class='ok'>Bridge-Modus aktiv. Das LAN-Ger&auml;t bekommt seine Adresse direkt vom Router.</p>" : "<p class='bad'>Die Ethernet-Bridge ist noch nicht bereit.</p>";
+    ethernetState = ethernetLanReady
+      ? String("<p class='ok'>") + T("Bridge-Modus aktiv. Das LAN-Ger&auml;t bekommt seine Adresse direkt vom Router.", "Bridge mode active. The LAN device gets its address directly from the router.") + "</p>"
+      : String("<p class='bad'>") + T("Die Ethernet-Bridge ist noch nicht bereit.", "The Ethernet bridge is not ready yet.") + "</p>";
   } else {
-    ethernetState = ethernetLanReady ? "<p class='ok'>NAT-Modus: Ethernet-DHCP ist aktiv. Das angeschlossene Ger&auml;t bekommt automatisch eine Adresse im Netz <b>192.168.50.x</b>; Gateway ist <b>192.168.50.1</b>.</p>" : "<p class='bad'>Der Ethernet-DHCP-Dienst ist noch nicht bereit.</p>";
+    ethernetState = ethernetLanReady
+      ? String("<p class='ok'>") + T("NAT-Modus: Ethernet-DHCP ist aktiv. Das angeschlossene Ger&auml;t bekommt automatisch eine Adresse im Netz <b>192.168.50.x</b>; Gateway ist <b>192.168.50.1</b>.", "NAT mode: Ethernet DHCP is active. The connected device automatically gets an address in the <b>192.168.50.x</b> network; the gateway is <b>192.168.50.1</b>.") + "</p>"
+      : String("<p class='bad'>") + T("Der Ethernet-DHCP-Dienst ist noch nicht bereit.", "The Ethernet DHCP service is not ready yet.") + "</p>";
   }
-  const String linkState = "<div class='status'><b>Ger&auml;t am LAN-Port</b><div id='lanInfo'>Wird geladen...</div></div>";
+  const String linkState = String("<div class='status'><b>") + T("Ger&auml;t am LAN-Port", "Device on the LAN port") + "</b><div id='lanInfo'>" + T("Wird geladen...", "Loading...") + "</div></div>";
 
-  const String script = "<script>"
-    "function status(){fetch('/status').then(r=>r.json()).then(s=>{let bars=document.querySelectorAll('#meter .bar'),n=s.wifi?Math.ceil(s.percent/25):0;bars.forEach((b,i)=>b.className='bar '+(i<n?'on '+s.quality:''));document.getElementById('signalText').textContent=s.wifi?s.rssi+' dBm - '+s.percent+' %':'Nicht mit dem Router verbunden';showLan(s);});}"
+  const String script = String("<script>") + (uiEnglish ? JS_TEXT_EN : JS_TEXT_DE) +
+    "function status(){fetch('/status').then(r=>r.json()).then(s=>{let bars=document.querySelectorAll('#meter .bar'),n=s.wifi?Math.ceil(s.percent/25):0;bars.forEach((b,i)=>b.className='bar '+(i<n?'on '+s.quality:''));document.getElementById('signalText').textContent=s.wifi?s.rssi+' dBm - '+s.percent+' %':L.notConnected;showLan(s);});}"
     "function dur(t){let h=Math.floor(t/3600),m=Math.floor(t%3600/60),x=t%60;return (h?h+' h ':'')+(h||m?m+' min ':'')+x+' s';}"
     "function row(k,v){return '<tr><td>'+k+'</td><td><b>'+v+'</b></td></tr>';}"
     "function showLan(s){let l=s.lan,br=s.mode=='bridge',box=document.getElementById('lanInfo'),h='';"
-    "if(!s.ethLink){box.innerHTML='<p class=\\'wait\\'>Kein Kabel erkannt. Stecke das Kabel am Endger\\u00e4t und an der Bridge fest ein.</p>';return;}"
-    "h+=row('Verbindung',l.speed+' Mbit/s, '+(l.fullDuplex?'Vollduplex':'Halbduplex'));h+=row('Kabel steckt seit',dur(l.linkSeconds));"
-    "if(!l.clients.length){h+=row(br?'Ger\\u00e4t':'IP-Adresse',br?'noch nicht erkannt (sendet noch nichts)':'noch keine per DHCP vergeben');}"
-    "l.clients.forEach((c,i)=>{let p=l.clients.length>1?' ('+(i+1)+')':'';h+=row('IP-Adresse'+p,c.ip||'noch unbekannt');h+=row('MAC-Adresse'+p,c.mac);h+=row((br?'Erkannt vor':'Adresse vergeben vor')+p,dur(c.seconds));});"
-    "if(br){h+=row('Adressvergabe','direkt durch den Router');if(l.staMac)h+=row('Ger\\u00e4t erscheint im Router als MAC',l.staMac);h+=row('Frames LAN &rarr; WLAN',l.toWifi);h+=row('Frames WLAN &rarr; LAN',l.toLan);h+=row('Verworfen',l.dropped);}"
-    "else{h+=row('Gateway / DNS','192.168.50.1 / 1.1.1.1');if(l.leaseMinutes)h+=row('Lease-Dauer',l.leaseMinutes+' min');if(l.bridgeMac)h+=row('MAC der Bridge (LAN)',l.bridgeMac);}"
+    "if(!s.ethLink){box.innerHTML='<p class=\\'wait\\'>'+L.noCable+'</p>';return;}"
+    "h+=row(L.link,l.speed+' Mbit/s, '+(l.fullDuplex?L.full:L.half));h+=row(L.since,dur(l.linkSeconds));"
+    "if(!l.clients.length){h+=row(br?L.device:L.ip,br?L.notDetected:L.noLease);}"
+    "l.clients.forEach((c,i)=>{let p=l.clients.length>1?' ('+(i+1)+')':'';h+=row(L.ip+p,c.ip||L.unknown);h+=row(L.mac+p,c.mac);h+=row((br?L.seen:L.assigned)+p,dur(c.seconds)+L.ago);});"
+    "if(br){h+=row(L.addr,L.byRouter);if(l.staMac)h+=row(L.appears,l.staMac);h+=row(L.toWifi,l.toWifi);h+=row(L.toLan,l.toLan);h+=row(L.dropped,l.dropped);}"
+    "else{h+=row(L.gw,'192.168.50.1 / 1.1.1.1');if(l.leaseMinutes)h+=row(L.lease,l.leaseMinutes+' min');if(l.bridgeMac)h+=row(L.bridgeMac,l.bridgeMac);}"
     "box.innerHTML='<table class=\\'info\\'>'+h+'</table>';}"
-    "function scan(){document.getElementById('networks').textContent='Suche nach WLANs ...';poll(true,0);}"
+    "function scan(){document.getElementById('networks').textContent=L.searching;poll(true,0);}"
     "function poll(start,errors){fetch('/networks'+(start?'?start=1':'')).then(r=>r.json()).then(s=>{"
     "if(s.state=='running'){setTimeout(()=>poll(false,0),800);return;}"
-    "if(s.state!='done'){document.getElementById('networks').textContent='Die WLAN-Suche ist fehlgeschlagen. Bitte erneut versuchen.';return;}"
-    "showNetworks(s.networks);}).catch(()=>{if(errors<8)setTimeout(()=>poll(false,errors+1),1500);else document.getElementById('networks').textContent='Die WLAN-Suche ist fehlgeschlagen. Bitte erneut versuchen.';});}"
-    "function showNetworks(list){let box=document.getElementById('networks');box.textContent='';if(!list.length){box.textContent='Keine WLANs gefunden.';return;}"
-    "list.forEach(n=>{let b=document.createElement('button');b.type='button';b.className='network';let name=document.createElement('b');name.textContent=n.ssid||'(verstecktes WLAN)';"
-    "let detail=document.createElement('small');detail.textContent=n.rssi+' dBm - '+n.percent+' % - '+n.encryption+(n.secured?' (gesichert)':'');b.append(name,detail);"
-    "b.onclick=()=>{document.querySelector('[name=ssid]').value=n.ssid;box.textContent='Ausgew\\u00e4hlt: '+n.ssid;};box.appendChild(b);});}"
+    "if(s.state!='done'){document.getElementById('networks').textContent=L.scanFail;return;}"
+    "showNetworks(s.networks);}).catch(()=>{if(errors<8)setTimeout(()=>poll(false,errors+1),1500);else document.getElementById('networks').textContent=L.scanFail;});}"
+    "function showNetworks(list){let box=document.getElementById('networks');box.textContent='';if(!list.length){box.textContent=L.none;return;}"
+    "list.forEach(n=>{let b=document.createElement('button');b.type='button';b.className='network';let name=document.createElement('b');name.textContent=n.ssid||L.hidden;"
+    "let detail=document.createElement('small');detail.textContent=n.rssi+' dBm - '+n.percent+' % - '+n.encryption+(n.secured?L.secured:'');b.append(name,detail);"
+    "b.onclick=()=>{document.querySelector('[name=ssid]').value=n.ssid;box.textContent=L.selected+n.ssid;};box.appendChild(b);});}"
     "status();setInterval(status,2000);</script>";
 
   // Piktogramme: NAT = ein Knoten verteilt auf mehrere Geraete, Bridge = Bruecke direkt ins Heimnetz
@@ -521,50 +588,56 @@ void showHome() {
   const char *bridgeIcon = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'>"
     "<path d='M3 15Q12 3 21 15'/><path d='M2 15h20M7.5 10.5V15M12 9v6M16.5 10.5V15M4 15v5M20 15v5'/></svg>";
 
-  const String modeForm = "<h2>Betriebsart</h2><form method='post' action='/mode'>"
-    "<label class='mode'><input type='radio' name='mode' value='nat'" + String(bridge ? "" : " checked") + ">" + natIcon +
-    "<span><b>NAT &ndash; eigenes Netzwerk</b>"
-    "<p>Die Bridge baut am LAN-Port ein eigenes Netz (192.168.50.x) auf und vergibt die Adressen selbst. "
-    "Ideal, wenn mehrere Ger&auml;te &uuml;ber einen Switch angeschlossen werden sollen.</p>"
-    "<span class='badge slow'>Datenrate bis ca. 10 Mbit/s</span></span></label>"
-    "<label class='mode'><input type='radio' name='mode' value='bridge'" + String(bridge ? " checked" : "") + ">" + bridgeIcon +
-    "<span><b>Bridge &ndash; direkt ins Heimnetz</b>"
-    "<p>Das angeschlossene Ger&auml;t erh&auml;lt seine IP-Adresse direkt vom Router und ist im Heimnetz wie jedes andere Ger&auml;t erreichbar. "
-    "F&uuml;r genau ein Ger&auml;t, nur IPv4.</p>"
-    "<span class='badge fast'>Datenrate &uuml;ber 30 Mbit/s</span></span></label>"
-    "<button type='submit'>&Uuml;bernehmen und neu starten</button></form>";
+  const String modeForm = String("<h2>") + T("Betriebsart", "Operating mode") + "</h2><form method='post' action='/mode'>"
+    "<label class='mode'><input type='radio' name='mode' value='nat'" + (bridge ? "" : " checked") + ">" + natIcon +
+    "<span><b>" + T("NAT &ndash; eigenes Netzwerk", "NAT &ndash; own network") + "</b><p>" +
+    T("Die Bridge baut am LAN-Port ein eigenes Netz (192.168.50.x) auf und vergibt die Adressen selbst. Ideal, wenn mehrere Ger&auml;te &uuml;ber einen Switch angeschlossen werden sollen.",
+      "The bridge creates its own network (192.168.50.x) on the LAN port and assigns the addresses itself. Ideal if you want to connect several devices through a switch.") +
+    "</p><span class='badge slow'>" + T("Datenrate bis ca. 10 Mbit/s", "Data rate up to approx. 10 Mbit/s") + "</span></span></label>"
+    "<label class='mode'><input type='radio' name='mode' value='bridge'" + (bridge ? " checked" : "") + ">" + bridgeIcon +
+    "<span><b>" + T("Bridge &ndash; direkt ins Heimnetz", "Bridge &ndash; straight into your home network") + "</b><p>" +
+    T("Das angeschlossene Ger&auml;t erh&auml;lt seine IP-Adresse direkt vom Router und ist im Heimnetz wie jedes andere Ger&auml;t erreichbar. F&uuml;r genau ein Ger&auml;t, nur IPv4.",
+      "The connected device gets its IP address directly from your router and is reachable in your home network like any other device. For exactly one device, IPv4 only.") +
+    "</p><span class='badge fast'>" + T("Datenrate &uuml;ber 30 Mbit/s", "Data rate above 30 Mbit/s") + "</span></span></label>"
+    "<button type='submit'>" + T("&Uuml;bernehmen und neu starten", "Apply and restart") + "</button></form>";
 
   const bool apOpen = setupApPassword.isEmpty();
   const bool defaultApPassword = !apOpen && setupApPassword == SETUP_AP_PASSWORD;
   String apState;
-  if (apOpen) apState = "<p class='bad'><b>Kein Passwort gesetzt.</b> Das Einrichtungs-WLAN ist offen. Lege jetzt ein Passwort fest.</p>";
-  else if (defaultApPassword) apState = "<p class='bad'>Es ist noch das Standard-Passwort aktiv. Da es &ouml;ffentlich bekannt ist, solltest du es jetzt &auml;ndern.</p>";
-  else apState = "<p class='ok'>Ein eigenes Passwort ist gesetzt.</p>";
-  const String apForm = "<h2 id='ap'>Einrichtungs-WLAN</h2><div class='" + String(apOpen ? "apbox open" : "apbox") + "'><p>Name: <b>" + String(SETUP_AP_SSID) + "</b></p>" + apState +
-    "<form method='post' action='/appass' onsubmit=\"if(this.ap_new.value!=this.ap_repeat.value){alert('Die beiden Eingaben stimmen nicht \\u00fcberein.');return false;}return confirm('Passwort \\u00e4ndern? Die Bridge startet danach neu.');\">"
-    "<label>Neues Passwort<input name='ap_new' type='password' minlength='8' maxlength='63' autocomplete='new-password' required></label>"
-    "<label>Neues Passwort wiederholen<input name='ap_repeat' type='password' minlength='8' maxlength='63' autocomplete='new-password' required></label>"
-    "<p><small>8 bis 63 Zeichen, keine Umlaute. Nach dem Speichern startet die Bridge neu; danach mit dem neuen Passwort verbinden.</small></p>"
-    "<button type='submit'>" + String(apOpen ? "Passwort festlegen" : "Passwort &auml;ndern") + "</button></form></div>";
+  if (apOpen) apState = String("<p class='bad'>") + T("<b>Kein Passwort gesetzt.</b> Das Einrichtungs-WLAN ist offen. Lege jetzt ein Passwort fest.", "<b>No password set.</b> The setup WiFi is open. Set a password now.") + "</p>";
+  else if (defaultApPassword) apState = String("<p class='bad'>") + T("Es ist noch das Standard-Passwort aktiv. Da es &ouml;ffentlich bekannt ist, solltest du es jetzt &auml;ndern.", "The default password is still active. As it is publicly known, you should change it now.") + "</p>";
+  else apState = String("<p class='ok'>") + T("Ein eigenes Passwort ist gesetzt.", "A custom password is set.") + "</p>";
+  const String apForm = String("<h2 id='ap'>") + T("Einrichtungs-WLAN", "Setup WiFi") + "</h2><div class='" + (apOpen ? "apbox open" : "apbox") + "'><p>Name: <b>" + SETUP_AP_SSID + "</b></p>" + apState +
+    "<form method='post' action='/appass' onsubmit=\"if(this.ap_new.value!=this.ap_repeat.value){alert(L.mismatch);return false;}return confirm(L.confirmPw);\">"
+    "<label>" + T("Neues Passwort", "New password") + "<input name='ap_new' type='password' minlength='8' maxlength='63' autocomplete='new-password' required></label>"
+    "<label>" + T("Neues Passwort wiederholen", "Repeat new password") + "<input name='ap_repeat' type='password' minlength='8' maxlength='63' autocomplete='new-password' required></label>"
+    "<p><small>" + T("8 bis 63 Zeichen, keine Umlaute. Nach dem Speichern startet die Bridge neu; danach mit dem neuen Passwort verbinden.", "8 to 63 characters, ASCII only. The bridge restarts after saving; then reconnect with the new password.") + "</small></p>"
+    "<button type='submit'>" + (apOpen ? T("Passwort festlegen", "Set password") : T("Passwort &auml;ndern", "Change password")) + "</button></form></div>";
 
   // Auffaelliger Warnhinweis ganz oben, solange das Einrichtungs-WLAN offen ist
-  const String apAlert = apOpen
-    ? "<div class='alert'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 3L2 21h20L12 3z'/><path d='M12 10v5M12 18v.5'/></svg>"
-      "<div><b>Kein WLAN-Passwort gesetzt!</b><br>Das Einrichtungs-WLAN <b>" + String(SETUP_AP_SSID) + "</b> ist offen. Jeder in Reichweite kann diese Seite &ouml;ffnen und die Einstellungen &auml;ndern.<br>"
-      "<a href='#ap'>Jetzt Passwort festlegen &darr;</a></div></div>"
-    : String("");
+  String apAlert;
+  if (apOpen) {
+    apAlert = String("<div class='alert'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 3L2 21h20L12 3z'/><path d='M12 10v5M12 18v.5'/></svg><div><b>") +
+      T("Kein WLAN-Passwort gesetzt!", "No WiFi password set!") + "</b><br>" +
+      T("Das Einrichtungs-WLAN", "The setup WiFi") + " <b>" + SETUP_AP_SSID + "</b> " +
+      T("ist offen. Jeder in Reichweite kann diese Seite &ouml;ffnen und die Einstellungen &auml;ndern.", "is open. Anyone in range can open this page and change the settings.") + "<br><a href='#ap'>" +
+      T("Jetzt Passwort festlegen &darr;", "Set a password now &darr;") + "</a></div></div>";
+  }
 
-  const String footer = bridge
-    ? "<p><small>Im Bridge-Modus reicht die Bridge die Daten direkt zum Router durch. Sie selbst hat im Router-Netz keine eigene Adresse; diese Seite ist nur &uuml;ber das Einrichtungs-WLAN erreichbar.</small></p>"
-    : "<p><small>Das Ethernet-Ger&auml;t bekommt Adresse, Gateway und DNS von der Bridge. Die Bridge &uuml;bersetzt die Verbindung zum Router.</small></p>";
+  const String footer = String("<p><small>") + (bridge
+    ? T("Im Bridge-Modus reicht die Bridge die Daten direkt zum Router durch. Sie selbst hat im Router-Netz keine eigene Adresse; diese Seite ist nur &uuml;ber das Einrichtungs-WLAN erreichbar.",
+        "In bridge mode the bridge passes the data straight to the router. It has no address of its own in the router network; this page is only reachable through the setup WiFi.")
+    : T("Das Ethernet-Ger&auml;t bekommt Adresse, Gateway und DNS von der Bridge. Die Bridge &uuml;bersetzt die Verbindung zum Router.",
+        "The Ethernet device gets its address, gateway and DNS from the bridge. The bridge translates the connection to the router.")) + "</small></p>";
 
-  const String html = pageHeader("WT32 Ethernet-WLAN-Bridge") + "<h1>Ethernet-WLAN-Bridge</h1>" + apAlert + routerState + signalMeterHtml() + ethernetState + linkState +
-    "<p>Diese Seite bleibt &uuml;ber das Einrichtungs-WLAN erreichbar: <b>192.168.4.1</b>.</p>"
-    "<h2>Router-WLAN</h2><button class='secondary' type='button' onclick='scan()'>Verf&uuml;gbare WLANs suchen</button><div id='networks'></div>"
-    "<form method='post' action='/save'><label>WLAN-Name des Routers<input name='ssid' maxlength='32' value='" + htmlEscape(routerSsid) + "' required></label>"
-    "<label>WLAN-Passwort des Routers<input name='password' type='password' maxlength='63' placeholder='Nur &auml;ndern, wenn n&ouml;tig'></label>"
-    "<button type='submit'>Speichern und verbinden</button></form>" +
-    modeForm + apForm + footer + "<p><small>Firmware-Version " + String(FIRMWARE_VERSION) + "</small></p>" + script + "</div></body></html>";
+  const String html = pageHeader(T("WT32 Ethernet-WLAN-Bridge", "WT32 Ethernet WiFi Bridge")) + languageSwitchHtml() +
+    "<h1>" + T("Ethernet-WLAN-Bridge", "Ethernet WiFi Bridge") + "</h1>" + apAlert + routerState + signalMeterHtml() + ethernetState + linkState +
+    "<p>" + T("Diese Seite bleibt &uuml;ber das Einrichtungs-WLAN erreichbar: ", "This page stays reachable through the setup WiFi: ") + "<b>192.168.4.1</b>.</p>"
+    "<h2>" + T("Router-WLAN", "Router WiFi") + "</h2><button class='secondary' type='button' onclick='scan()'>" + T("Verf&uuml;gbare WLANs suchen", "Search for WiFi networks") + "</button><div id='networks'></div>"
+    "<form method='post' action='/save'><label>" + T("WLAN-Name des Routers", "Router WiFi name") + "<input name='ssid' maxlength='32' value='" + htmlEscape(routerSsid) + "' required></label>"
+    "<label>" + T("WLAN-Passwort des Routers", "Router WiFi password") + "<input name='password' type='password' maxlength='63' placeholder='" + T("Nur &auml;ndern, wenn n&ouml;tig", "Only change if needed") + "'></label>"
+    "<button type='submit'>" + T("Speichern und verbinden", "Save and connect") + "</button></form>" +
+    modeForm + apForm + footer + "<p><small>" + T("Firmware-Version ", "Firmware version ") + FIRMWARE_VERSION + "</small></p>" + script + pageFooter();
   webServer.send(200, "text/html; charset=utf-8", html);
 }
 
@@ -576,6 +649,7 @@ void connectToRouter() {
 }
 
 void saveSettings() {
+  detectLanguage();
   routerSsid = webServer.arg("ssid");
   const String newPassword = webServer.arg("password");
   preferences.putString("ssid", routerSsid);
@@ -583,15 +657,23 @@ void saveSettings() {
     routerPassword = newPassword;
     preferences.putString("password", routerPassword);
   }
-  webServer.send(200, "text/html; charset=utf-8", pageHeader("Gespeichert") + "<h1>Gespeichert</h1><p>Die Bridge verbindet sich jetzt mit <b>" + htmlEscape(routerSsid) + "</b>. Kehre nach ein paar Sekunden zur <a href='/'>Startseite</a> zur&uuml;ck.</p></div></body></html>");
+  webServer.send(200, "text/html; charset=utf-8", pageHeader(T("Gespeichert", "Saved")) + "<h1>" + T("Gespeichert", "Saved") + "</h1><p>" +
+    T("Die Bridge verbindet sich jetzt mit ", "The bridge is now connecting to ") + "<b>" + htmlEscape(routerSsid) + "</b>. " +
+    T("Kehre nach ein paar Sekunden zur <a href='/'>Startseite</a> zur&uuml;ck.", "Return to the <a href='/'>start page</a> after a few seconds.") + "</p>" + pageFooter());
   connectToRouter();
 }
 
 void saveMode() {
+  detectLanguage();
   const BridgeMode newMode = webServer.arg("mode") == "bridge" ? MODE_BRIDGE : MODE_NAT;
   preferences.putUChar("mode", newMode);
   const String name = newMode == MODE_BRIDGE ? "Bridge" : "NAT";
-  webServer.send(200, "text/html; charset=utf-8", pageHeader("Neustart") + "<h1>Neustart</h1><p>Betriebsart <b>" + name + "</b> gespeichert. Die Bridge startet neu. Verbinde dich danach wieder mit dem WLAN <b>" + String(SETUP_AP_SSID) + "</b> und &ouml;ffne <a href='/'>192.168.4.1</a>.</p><p><small>Ziehe am LAN-Ger&auml;t kurz das Kabel ab oder erneuere dort die IP-Adresse, damit es eine Adresse aus dem neuen Netz holt.</small></p></div></body></html>");
+  webServer.send(200, "text/html; charset=utf-8", pageHeader(T("Neustart", "Restart")) + "<h1>" + T("Neustart", "Restarting") + "</h1><p>" +
+    T("Betriebsart ", "Operating mode ") + "<b>" + name + "</b> " +
+    T("gespeichert. Die Bridge startet neu. Verbinde dich danach wieder mit dem WLAN ", "saved. The bridge is restarting. Afterwards, reconnect to the WiFi ") + "<b>" + SETUP_AP_SSID + "</b> " +
+    T("und &ouml;ffne", "and open") + " <a href='/'>192.168.4.1</a>.</p><p><small>" +
+    T("Ziehe am LAN-Ger&auml;t kurz das Kabel ab oder erneuere dort die IP-Adresse, damit es eine Adresse aus dem neuen Netz holt.", "Briefly unplug the cable of the LAN device or renew its IP address so it gets an address from the new network.") +
+    "</small></p>" + pageFooter());
   restartAtMs = millis() + 1500;  // Antwort erst noch ausliefern
 }
 
@@ -606,24 +688,31 @@ bool isValidWifiPassword(const String &password) {
 }
 
 void sendApPasswordError(const String &message) {
-  webServer.send(400, "text/html; charset=utf-8", pageHeader("Fehler") + "<h1>Passwort nicht ge&auml;ndert</h1><p class='bad'>" + message + "</p><p><a href='/'>Zur&uuml;ck zur Startseite</a></p></div></body></html>");
+  webServer.send(400, "text/html; charset=utf-8", pageHeader(T("Fehler", "Error")) + "<h1>" + T("Passwort nicht ge&auml;ndert", "Password not changed") + "</h1><p class='bad'>" + message + "</p><p><a href='/'>" + T("Zur&uuml;ck zur Startseite", "Back to the start page") + "</a></p>" + pageFooter());
 }
 
 void saveApPassword() {
+  detectLanguage();
   const String newPassword = webServer.arg("ap_new");
   const String repeat = webServer.arg("ap_repeat");
   if (newPassword != repeat) {
-    sendApPasswordError("Die beiden Eingaben stimmen nicht &uuml;berein.");
+    sendApPasswordError(T("Die beiden Eingaben stimmen nicht &uuml;berein.", "The two entries do not match."));
     return;
   }
   if (!isValidWifiPassword(newPassword)) {
-    sendApPasswordError("Das Passwort muss 8 bis 63 Zeichen lang sein und darf nur Buchstaben, Ziffern, Leerzeichen und die &uuml;blichen Sonderzeichen enthalten (keine Umlaute).");
+    sendApPasswordError(T("Das Passwort muss 8 bis 63 Zeichen lang sein und darf nur Buchstaben, Ziffern, Leerzeichen und die &uuml;blichen Sonderzeichen enthalten (keine Umlaute).",
+                          "The password must be 8 to 63 characters long and may only contain letters, digits, spaces and common special characters (ASCII only)."));
     return;
   }
   preferences.putString("ap_pass", newPassword);
   setupApPassword = newPassword;
   Serial.println("Neues Passwort fuer das Einrichtungs-WLAN gespeichert");
-  webServer.send(200, "text/html; charset=utf-8", pageHeader("Gespeichert") + "<h1>Passwort ge&auml;ndert</h1><p>Das neue Passwort f&uuml;r das WLAN <b>" + String(SETUP_AP_SSID) + "</b> ist gespeichert. Die Bridge startet jetzt neu.</p><p>Verbinde dich danach <b>mit dem neuen Passwort</b> wieder mit dem WLAN und &ouml;ffne <a href='/'>192.168.4.1</a>. Eventuell musst du das WLAN auf deinem Ger&auml;t vorher &bdquo;vergessen&ldquo;.</p></div></body></html>");
+  webServer.send(200, "text/html; charset=utf-8", pageHeader(T("Gespeichert", "Saved")) + "<h1>" + T("Passwort ge&auml;ndert", "Password changed") + "</h1><p>" +
+    T("Das neue Passwort f&uuml;r das WLAN ", "The new password for the WiFi ") + "<b>" + SETUP_AP_SSID + "</b> " +
+    T("ist gespeichert. Die Bridge startet jetzt neu.", "has been saved. The bridge is restarting now.") + "</p><p>" +
+    T("Verbinde dich danach <b>mit dem neuen Passwort</b> wieder mit dem WLAN und &ouml;ffne <a href='/'>192.168.4.1</a>. Eventuell musst du das WLAN auf deinem Ger&auml;t vorher &bdquo;vergessen&ldquo;.",
+      "Afterwards, reconnect to the WiFi <b>with the new password</b> and open <a href='/'>192.168.4.1</a>. You may have to \"forget\" the WiFi on your device first.") +
+    "</p>" + pageFooter());
   restartAtMs = millis() + 1500;
 }
 
@@ -840,6 +929,9 @@ void setup() {
   webServer.on("/save", HTTP_POST, saveSettings);
   webServer.on("/mode", HTTP_POST, saveMode);
   webServer.on("/appass", HTTP_POST, saveApPassword);
+  webServer.on("/lang", HTTP_GET, setLanguage);
+  static const char *collectedHeaders[] = {"Cookie", "Accept-Language"};
+  webServer.collectHeaders(collectedHeaders, 2);
   webServer.onNotFound(showHome);
   webServer.begin();
 

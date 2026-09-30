@@ -117,7 +117,7 @@ In der blauen Statusleiste unten gibt es drei wichtige Symbole:
 4. Auf **🔌 Serial Monitor** klicken. Es erscheint unter anderem:
 
    ```
-   WT32-ETH01 Ethernet-WLAN-Bridge, Firmware 2.3
+   WT32-ETH01 Ethernet-WLAN-Bridge, Firmware 2.4
    Einrichtungsseite: http://192.168.4.1
    ```
 
@@ -144,9 +144,11 @@ monitor_port = /dev/cu.usbserial-0001
 
 ## 6. Bridge einrichten
 
-1. Mit dem Handy oder Laptop mit dem WLAN **`WT32-Bridge-Setup`** verbinden
+1. Mit dem Handy oder Laptop mit dem WLAN **`WT32-Bridge-Setup`** verbinden.
    Beim ersten Start ist es **offen**, ein Passwort ist nicht nötig (siehe Abschnitt 7).
-2. Im Browser **http://192.168.4.1** öffnen.
+2. Im Browser **http://192.168.4.1** öffnen. Die Seite richtet sich nach der Sprache des Browsers;
+   mit den Flaggen-Buttons **DE / EN** oben rechts lässt sie sich zwischen Deutsch und Englisch
+   umschalten.
 3. **Verfügbare WLANs suchen**, dein Router-WLAN antippen, Passwort eingeben,
    **Speichern und verbinden**.
 4. Betriebsart wählen: **NAT** (eigenes Netz, mehrere Geräte) oder **Bridge** (IP direkt vom
@@ -242,7 +244,12 @@ Wenn im Bereich **Releases** des Projekts fertige Dateien (`bootloader.bin`, `pa
    | `0xe000` | `boot_app0.bin` |
    | `0x10000` | `firmware.bin` |
 
+   Einfacher: nur die Datei `wt32-eth01-bridge-v…-full.bin` mit der Adresse `0x0` eintragen, sie
+   enthält alle vier Teile.
+
 4. **Program** klicken, danach IO0 von GND trennen und neu starten.
+
+Bei einem Update von einer älteren Version bleiben alle Einstellungen erhalten (solange im Web-Flasher nicht „Erase Flash“ gewählt wird).
 
 Wer selbst kompiliert, findet die Dateien nach `pio run` unter `.pio/build/wt32-eth01/`
 (`boot_app0.bin` liegt im PlatformIO-Paket `framework-arduinoespressif32` unter

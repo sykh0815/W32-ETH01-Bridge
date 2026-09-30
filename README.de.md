@@ -2,13 +2,13 @@
 
 🇬🇧 [English](README.md) | 🇩🇪 **Deutsch**
 
-[![Version](https://img.shields.io/badge/Version-2.3-1263a6)](CHANGELOG.de.md)
+[![Version](https://img.shields.io/badge/Version-2.4-1263a6)](CHANGELOG.de.md)
 [![Plattform](https://img.shields.io/badge/ESP32-WT32--ETH01-green)](#hardware)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-Arduino%20Core%203.x-orange?logo=platformio)](#bauen-und-flashen)
 [![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-yellow)](LICENSE)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/sykh)
 
-**Version 2.3** – siehe [Änderungsprotokoll](CHANGELOG.de.md)
+**Version 2.4** – siehe [Änderungsprotokoll](CHANGELOG.de.md)
 
 Firmware für das **WT32-ETH01 v1.4** (ESP32 + LAN8720), die ein Gerät mit LAN-Anschluss per WLAN
 ins Netzwerk bringt: ein **WLAN-Adapter für Geräte ohne WLAN** oder eine **WLAN-Bridge für den
@@ -40,7 +40,8 @@ Router, Link-Geschwindigkeit, Paketzähler), WLAN-Suche und Auswahl der Betriebs
     Datenrate bis ca. 10 Mbit/s.
   - **Bridge – direkt ins Heimnetz** (experimentell): Das LAN-Gerät bekommt seine IP **direkt vom
     Router**. Nur ein Gerät, nur IPv4. Datenrate über 30 Mbit/s (Details siehe unten).
-- **Webinterface** über ein eigenes Einrichtungs-WLAN (Passwort im Webinterface änderbar):
+- **Webinterface** auf **Deutsch und Englisch** (umschaltbar per Flaggen-Button) über ein eigenes
+  Einrichtungs-WLAN (Passwort im Webinterface änderbar):
   - WLAN-Suche und Eingabe der Router-Zugangsdaten
   - Anzeige der WLAN-Signalstärke
   - Infos zum Gerät am LAN-Port: IP-Adresse, MAC-Adresse, Link-Geschwindigkeit/Duplex,
@@ -169,12 +170,14 @@ docs/social-preview.png   Vorschaubild für GitHub
 CHANGELOG.de.md           Änderungsprotokoll (Deutsch)
 CHANGELOG.md              changelog (English)
 LICENSE                   MIT-Lizenz
+tools/release.sh          baut die Firmware und legt einen GitHub-Release an
 backup/main_nat_only.cpp  ältere Version nur mit NAT-Modus
 ```
 
 ## Versionen
 
-Aktuelle Version: **2.3** – Einrichtungs-WLAN startet ohne Passwort, mit auffälliger Warnung im Webinterface, bis eines festgelegt ist.
+Aktuelle Version: **2.4** – Webinterface auf Deutsch und Englisch mit Sprachumschalter.
+Fertige Firmware-Dateien hängen an jedem [Release](../../releases).
 Alle Änderungen stehen im **[Änderungsprotokoll](CHANGELOG.de.md)**.
 
 ## Unterstützen

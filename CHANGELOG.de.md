@@ -14,6 +14,21 @@ Die Versionsnummern folgen dem Schema **MAJOR.MINOR.PATCH**:
 Die aktuelle Version steht in `src/main.cpp` (`FIRMWARE_VERSION`) und wird im Webinterface und in
 der seriellen Ausgabe angezeigt.
 
+## [2.4] – 30.09.2026
+
+### Neu
+- Komplettes Webinterface zusätzlich auf **Englisch**, einschließlich aller Ergebnis- und
+  Fehlerseiten und der per JavaScript erzeugten Texte.
+- Sprachumschalter mit kleinen Flaggen-Buttons (DE / EN) oben rechts. Die Wahl wird ein Jahr lang
+  im Browser gespeichert (Cookie); ohne Wahl gilt die Sprache des Browsers.
+- `tools/release.sh`: baut die Firmware und legt einen GitHub-Release mit den Firmware-Dateien an
+  (`bootloader.bin`, `partitions.bin`, `boot_app0.bin`, `firmware.bin`, eine zusammengefügte
+  `-full.bin`, falls esptool vorhanden ist, und `SHA256SUMS.txt`) sowie zweisprachigen
+  Release-Notizen aus den Changelogs.
+
+### Geändert
+- `/status` meldet zusätzlich, ob das Einrichtungs-WLAN offen ist (`apOpen`).
+
 ## [2.3] – 30.09.2026
 
 ### Geändert

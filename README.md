@@ -26,7 +26,7 @@ connected to the WT32-ETH01 by cable, and the WT32-ETH01 connects to your router
 ## Web interface
 
 <p align="center">
-  <img src="docs/webinterface.png" alt="Web interface in bridge mode: language switch, open setup WiFi warning, WiFi signal, LAN device info, operating mode and setup WiFi password" width="420">
+  <img src="docs/webinterface-v2.4.png" alt="Web interface in bridge mode: language switch, open setup WiFi warning, WiFi signal, LAN device info, operating mode and setup WiFi password" width="420">
 </p>
 
 The web interface (English, version 2.4) in bridge mode: language switch, warning while the setup
@@ -166,7 +166,7 @@ platformio.ini            build configuration
 src/main.cpp              firmware
 docs/TUTORIAL.en.md       tutorial: build and flash (English)
 docs/TUTORIAL.de.md       Tutorial: Kompilieren und Flashen (Deutsch)
-docs/webinterface.png     screenshot of the web interface
+docs/webinterface-v2.4.png screenshot of the web interface
 docs/wt32-eth01.svg       board illustration
 docs/social-preview.png   GitHub preview image
 tools/release.sh          builds the firmware and creates a GitHub release

@@ -26,7 +26,7 @@ wird per Kabel an den WT32-ETH01 angeschlossen, der WT32-ETH01 verbindet sich pe
 ## Webinterface
 
 <p align="center">
-  <img src="docs/webinterface.png" alt="Webinterface der Bridge im Bridge-Modus: WLAN-Empfang, Infos zum Gerät am LAN-Port, WLAN-Suche und Auswahl der Betriebsart" width="420">
+  <img src="docs/webinterface-v2.4.png" alt="Webinterface im Bridge-Modus: Sprachumschalter, Warnung wegen offenem Einrichtungs-WLAN, WLAN-Empfang, Infos zum LAN-Gerät, Betriebsart und Passwort des Einrichtungs-WLANs" width="420">
 </p>
 
 Das Webinterface (hier auf Englisch, Version 2.4) im Bridge-Modus: Sprachumschalter, Warnung
@@ -166,7 +166,7 @@ platformio.ini            Build-Konfiguration
 src/main.cpp              Firmware
 docs/TUTORIAL.de.md       Tutorial: Kompilieren und Flashen (Deutsch)
 docs/TUTORIAL.en.md       Tutorial: build and flash (English)
-docs/webinterface.png     Screenshot des Webinterface
+docs/webinterface-v2.4.png Screenshot des Webinterface
 docs/wt32-eth01.svg       Illustration des Boards
 docs/social-preview.png   Vorschaubild für GitHub
 CHANGELOG.de.md           Änderungsprotokoll (Deutsch)

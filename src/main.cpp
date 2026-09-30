@@ -35,6 +35,8 @@ void connectToRouter();
 void resumeRouterConnection();
 void saveSettings();
 void saveMode();
+void saveApPassword();
+bool isValidWifiPassword(const String &password);
 void onEthernetEvent(void *argument, esp_event_base_t eventBase, int32_t eventId, void *eventData);
 void onIpEvent(void *argument, esp_event_base_t eventBase, int32_t eventId, void *eventData);
 void onWifiDriverEvent(void *argument, esp_event_base_t eventBase, int32_t eventId, void *eventData);
@@ -46,9 +48,11 @@ void startLanServices();
 
 constexpr int ETH_PHY_POWER_PIN = 16;
 constexpr int ETH_PHY_ADDRESS = 1;
-constexpr char FIRMWARE_VERSION[] = "2.1";
+constexpr char FIRMWARE_VERSION[] = "2.3";
 constexpr char SETUP_AP_SSID[] = "WT32-Bridge-Setup";
-constexpr char SETUP_AP_PASSWORD[] = "BridgeSetup26";
+// Standard-Passwort des Einrichtungs-WLANs. Leer = offenes WLAN beim ersten Start; das Webinterface
+// fordert dann auffaellig dazu auf, ein Passwort festzulegen.
+constexpr char SETUP_AP_PASSWORD[] = "";
 
 WebServer webServer(80);
 Preferences preferences;
@@ -57,6 +61,7 @@ esp_netif_t *ethernetNetif = nullptr;
 esp_eth_handle_t ethernetHandle = nullptr;
 String routerSsid;
 String routerPassword;
+String setupApPassword;  // aktuelles Passwort des Einrichtungs-WLANs (NVS, sonst Standard; leer = offen)
 volatile bool ethernetLinkUp = false;
 volatile bool ethernetLanReady = false;
 volatile bool wifiConnected = false;
@@ -344,7 +349,7 @@ esp_err_t onWifiFrame(void *buffer, uint16_t len, void *eb) {
 // ---------------------------------------------------------------------------
 
 String pageHeader(const String &title) {
-  return "<!doctype html><html lang='de'><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>" + title + "</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:30px auto;padding:0 18px;background:#f2f6fa;color:#17212b}.card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 18px #0002}h1{margin-top:0;color:#1263a6}h2{font-size:18px;margin:26px 0 4px}.status{padding:12px 14px;margin:12px 0;border-radius:10px;background:#edf5fd}.ok{color:#08783d}.wait{color:#875b00}.bad{color:#a32020}.meter{display:flex;align-items:flex-end;gap:4px;height:38px;margin:10px 0 3px}.bar{width:13px;border-radius:3px 3px 0 0;background:#d3dae1}.bar.on.good{background:#1a9b59}.bar.on.fair{background:#dd9a17}.bar.on.weak{background:#ce3e3e}label{display:block;font-weight:bold;margin-top:16px}input{box-sizing:border-box;width:100%;padding:12px;margin-top:6px;border:1px solid #aac;border-radius:8px;font-size:16px}label.opt{font-weight:normal;margin-top:10px}label.opt input{width:auto;margin:0 8px 0 0}label.mode{display:flex;gap:14px;align-items:flex-start;font-weight:normal;margin-top:12px;padding:14px;border:2px solid #cbd8e3;border-radius:12px;cursor:pointer;background:#fff}label.mode:has(input:checked){border-color:#1263a6;background:#f3f8fd}label.mode input{width:auto;margin:4px 0 0}.mode svg{flex:none;width:46px;height:46px;color:#1263a6}.mode b{display:block;font-size:17px;margin-bottom:4px}.mode p{margin:6px 0 0;color:#4b5865;font-size:14px;line-height:1.4}.badge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:bold}.badge.slow{background:#fdf1dc;color:#875b00}.badge.fast{background:#e3f4ea;color:#08783d}button{margin-top:22px;background:#1263a6;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-size:16px;cursor:pointer}.secondary{margin-top:12px;background:#587080}.network{display:block;width:100%;text-align:left;margin-top:8px;padding:11px;border:1px solid #cbd8e3;border-radius:8px;background:#f8fbfe;color:#17212b}.network b{display:block}.network small,small{color:#4b5865}table.info{width:100%;border-collapse:collapse;margin-top:8px}table.info td{padding:5px 4px;border-top:1px solid #d6e2ee;vertical-align:top}table.info td:first-child{color:#4b5865;width:45%}</style></head><body><div class='card'>";
+  return "<!doctype html><html lang='de'><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>" + title + "</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:30px auto;padding:0 18px;background:#f2f6fa;color:#17212b}.card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 18px #0002}h1{margin-top:0;color:#1263a6}h2{font-size:18px;margin:26px 0 4px}.status{padding:12px 14px;margin:12px 0;border-radius:10px;background:#edf5fd}.ok{color:#08783d}.wait{color:#875b00}.bad{color:#a32020}.meter{display:flex;align-items:flex-end;gap:4px;height:38px;margin:10px 0 3px}.bar{width:13px;border-radius:3px 3px 0 0;background:#d3dae1}.bar.on.good{background:#1a9b59}.bar.on.fair{background:#dd9a17}.bar.on.weak{background:#ce3e3e}label{display:block;font-weight:bold;margin-top:16px}input{box-sizing:border-box;width:100%;padding:12px;margin-top:6px;border:1px solid #aac;border-radius:8px;font-size:16px}label.opt{font-weight:normal;margin-top:10px}label.opt input{width:auto;margin:0 8px 0 0}label.mode{display:flex;gap:14px;align-items:flex-start;font-weight:normal;margin-top:12px;padding:14px;border:2px solid #cbd8e3;border-radius:12px;cursor:pointer;background:#fff}label.mode:has(input:checked){border-color:#1263a6;background:#f3f8fd}label.mode input{width:auto;margin:4px 0 0}.mode svg{flex:none;width:46px;height:46px;color:#1263a6}.mode b{display:block;font-size:17px;margin-bottom:4px}.mode p{margin:6px 0 0;color:#4b5865;font-size:14px;line-height:1.4}.badge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:bold}.badge.slow{background:#fdf1dc;color:#875b00}.badge.fast{background:#e3f4ea;color:#08783d}.alert{display:flex;gap:14px;align-items:flex-start;background:#c62828;color:#fff;padding:16px 18px;border-radius:12px;margin:0 0 18px;line-height:1.45;box-shadow:0 0 0 4px #f8d4d4;animation:pulse 2s ease-in-out infinite}.alert svg{flex:none;width:34px;height:34px}.alert a{display:inline-block;margin-top:8px;color:#fff;font-weight:bold;text-decoration:underline}@keyframes pulse{50%{box-shadow:0 0 0 8px #f8d4d4}}.apbox.open{border:2px solid #c62828;background:#fdecec;border-radius:12px;padding:4px 16px 16px}button{margin-top:22px;background:#1263a6;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-size:16px;cursor:pointer}.secondary{margin-top:12px;background:#587080}.network{display:block;width:100%;text-align:left;margin-top:8px;padding:11px;border:1px solid #cbd8e3;border-radius:8px;background:#f8fbfe;color:#17212b}.network b{display:block}.network small,small{color:#4b5865}table.info{width:100%;border-collapse:collapse;margin-top:8px}table.info td{padding:5px 4px;border-top:1px solid #d6e2ee;vertical-align:top}table.info td:first-child{color:#4b5865;width:45%}</style></head><body><div class='card'>";
 }
 
 String signalMeterHtml() {
@@ -529,17 +534,37 @@ void showHome() {
     "<span class='badge fast'>Datenrate &uuml;ber 30 Mbit/s</span></span></label>"
     "<button type='submit'>&Uuml;bernehmen und neu starten</button></form>";
 
+  const bool apOpen = setupApPassword.isEmpty();
+  const bool defaultApPassword = !apOpen && setupApPassword == SETUP_AP_PASSWORD;
+  String apState;
+  if (apOpen) apState = "<p class='bad'><b>Kein Passwort gesetzt.</b> Das Einrichtungs-WLAN ist offen. Lege jetzt ein Passwort fest.</p>";
+  else if (defaultApPassword) apState = "<p class='bad'>Es ist noch das Standard-Passwort aktiv. Da es &ouml;ffentlich bekannt ist, solltest du es jetzt &auml;ndern.</p>";
+  else apState = "<p class='ok'>Ein eigenes Passwort ist gesetzt.</p>";
+  const String apForm = "<h2 id='ap'>Einrichtungs-WLAN</h2><div class='" + String(apOpen ? "apbox open" : "apbox") + "'><p>Name: <b>" + String(SETUP_AP_SSID) + "</b></p>" + apState +
+    "<form method='post' action='/appass' onsubmit=\"if(this.ap_new.value!=this.ap_repeat.value){alert('Die beiden Eingaben stimmen nicht \\u00fcberein.');return false;}return confirm('Passwort \\u00e4ndern? Die Bridge startet danach neu.');\">"
+    "<label>Neues Passwort<input name='ap_new' type='password' minlength='8' maxlength='63' autocomplete='new-password' required></label>"
+    "<label>Neues Passwort wiederholen<input name='ap_repeat' type='password' minlength='8' maxlength='63' autocomplete='new-password' required></label>"
+    "<p><small>8 bis 63 Zeichen, keine Umlaute. Nach dem Speichern startet die Bridge neu; danach mit dem neuen Passwort verbinden.</small></p>"
+    "<button type='submit'>" + String(apOpen ? "Passwort festlegen" : "Passwort &auml;ndern") + "</button></form></div>";
+
+  // Auffaelliger Warnhinweis ganz oben, solange das Einrichtungs-WLAN offen ist
+  const String apAlert = apOpen
+    ? "<div class='alert'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 3L2 21h20L12 3z'/><path d='M12 10v5M12 18v.5'/></svg>"
+      "<div><b>Kein WLAN-Passwort gesetzt!</b><br>Das Einrichtungs-WLAN <b>" + String(SETUP_AP_SSID) + "</b> ist offen. Jeder in Reichweite kann diese Seite &ouml;ffnen und die Einstellungen &auml;ndern.<br>"
+      "<a href='#ap'>Jetzt Passwort festlegen &darr;</a></div></div>"
+    : String("");
+
   const String footer = bridge
     ? "<p><small>Im Bridge-Modus reicht die Bridge die Daten direkt zum Router durch. Sie selbst hat im Router-Netz keine eigene Adresse; diese Seite ist nur &uuml;ber das Einrichtungs-WLAN erreichbar.</small></p>"
     : "<p><small>Das Ethernet-Ger&auml;t bekommt Adresse, Gateway und DNS von der Bridge. Die Bridge &uuml;bersetzt die Verbindung zum Router.</small></p>";
 
-  const String html = pageHeader("WT32 Ethernet-WLAN-Bridge") + "<h1>Ethernet-WLAN-Bridge</h1>" + routerState + signalMeterHtml() + ethernetState + linkState +
+  const String html = pageHeader("WT32 Ethernet-WLAN-Bridge") + "<h1>Ethernet-WLAN-Bridge</h1>" + apAlert + routerState + signalMeterHtml() + ethernetState + linkState +
     "<p>Diese Seite bleibt &uuml;ber das Einrichtungs-WLAN erreichbar: <b>192.168.4.1</b>.</p>"
     "<h2>Router-WLAN</h2><button class='secondary' type='button' onclick='scan()'>Verf&uuml;gbare WLANs suchen</button><div id='networks'></div>"
     "<form method='post' action='/save'><label>WLAN-Name des Routers<input name='ssid' maxlength='32' value='" + htmlEscape(routerSsid) + "' required></label>"
     "<label>WLAN-Passwort des Routers<input name='password' type='password' maxlength='63' placeholder='Nur &auml;ndern, wenn n&ouml;tig'></label>"
     "<button type='submit'>Speichern und verbinden</button></form>" +
-    modeForm + footer + "<p><small>Firmware-Version " + String(FIRMWARE_VERSION) + "</small></p>" + script + "</div></body></html>";
+    modeForm + apForm + footer + "<p><small>Firmware-Version " + String(FIRMWARE_VERSION) + "</small></p>" + script + "</div></body></html>";
   webServer.send(200, "text/html; charset=utf-8", html);
 }
 
@@ -568,6 +593,38 @@ void saveMode() {
   const String name = newMode == MODE_BRIDGE ? "Bridge" : "NAT";
   webServer.send(200, "text/html; charset=utf-8", pageHeader("Neustart") + "<h1>Neustart</h1><p>Betriebsart <b>" + name + "</b> gespeichert. Die Bridge startet neu. Verbinde dich danach wieder mit dem WLAN <b>" + String(SETUP_AP_SSID) + "</b> und &ouml;ffne <a href='/'>192.168.4.1</a>.</p><p><small>Ziehe am LAN-Ger&auml;t kurz das Kabel ab oder erneuere dort die IP-Adresse, damit es eine Adresse aus dem neuen Netz holt.</small></p></div></body></html>");
   restartAtMs = millis() + 1500;  // Antwort erst noch ausliefern
+}
+
+// WPA2-Passphrase: 8 bis 63 druckbare ASCII-Zeichen
+bool isValidWifiPassword(const String &password) {
+  if (password.length() < 8 || password.length() > 63) return false;
+  for (size_t i = 0; i < password.length(); ++i) {
+    const char c = password[i];
+    if (c < 32 || c > 126) return false;
+  }
+  return true;
+}
+
+void sendApPasswordError(const String &message) {
+  webServer.send(400, "text/html; charset=utf-8", pageHeader("Fehler") + "<h1>Passwort nicht ge&auml;ndert</h1><p class='bad'>" + message + "</p><p><a href='/'>Zur&uuml;ck zur Startseite</a></p></div></body></html>");
+}
+
+void saveApPassword() {
+  const String newPassword = webServer.arg("ap_new");
+  const String repeat = webServer.arg("ap_repeat");
+  if (newPassword != repeat) {
+    sendApPasswordError("Die beiden Eingaben stimmen nicht &uuml;berein.");
+    return;
+  }
+  if (!isValidWifiPassword(newPassword)) {
+    sendApPasswordError("Das Passwort muss 8 bis 63 Zeichen lang sein und darf nur Buchstaben, Ziffern, Leerzeichen und die &uuml;blichen Sonderzeichen enthalten (keine Umlaute).");
+    return;
+  }
+  preferences.putString("ap_pass", newPassword);
+  setupApPassword = newPassword;
+  Serial.println("Neues Passwort fuer das Einrichtungs-WLAN gespeichert");
+  webServer.send(200, "text/html; charset=utf-8", pageHeader("Gespeichert") + "<h1>Passwort ge&auml;ndert</h1><p>Das neue Passwort f&uuml;r das WLAN <b>" + String(SETUP_AP_SSID) + "</b> ist gespeichert. Die Bridge startet jetzt neu.</p><p>Verbinde dich danach <b>mit dem neuen Passwort</b> wieder mit dem WLAN und &ouml;ffne <a href='/'>192.168.4.1</a>. Eventuell musst du das WLAN auf deinem Ger&auml;t vorher &bdquo;vergessen&ldquo;.</p></div></body></html>");
+  restartAtMs = millis() + 1500;
 }
 
 // ---------------------------------------------------------------------------
@@ -755,6 +812,8 @@ void setup() {
   preferences.begin("bridge", false);
   routerSsid = preferences.getString("ssid", "");
   routerPassword = preferences.getString("password", "");
+  setupApPassword = preferences.getString("ap_pass", SETUP_AP_PASSWORD);
+  if (!isValidWifiPassword(setupApPassword)) setupApPassword = isValidWifiPassword(SETUP_AP_PASSWORD) ? SETUP_AP_PASSWORD : "";
   bridgeMode = preferences.getUChar("mode", MODE_NAT) == MODE_BRIDGE ? MODE_BRIDGE : MODE_NAT;
   Serial.printf("WT32-ETH01 Ethernet-WLAN-Bridge, Firmware %s\n", FIRMWARE_VERSION);
   Serial.printf("Betriebsart: %s\n", bridgeMode == MODE_BRIDGE ? "Bridge" : "NAT");
@@ -762,7 +821,13 @@ void setup() {
   WiFi.mode(WIFI_MODE_APSTA);
   WiFi.setSleep(false);  // kein WLAN-Energiesparen: geringere Latenz, stabilere Bridge
   WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
-  WiFi.softAP(SETUP_AP_SSID, SETUP_AP_PASSWORD);
+  if (setupApPassword.isEmpty()) {
+    WiFi.softAP(SETUP_AP_SSID);  // offenes WLAN bis ein Passwort festgelegt ist
+    Serial.println("WARNUNG: Einrichtungs-WLAN ist OFFEN (kein Passwort). Bitte im Webinterface ein Passwort festlegen.");
+  } else {
+    WiFi.softAP(SETUP_AP_SSID, setupApPassword.c_str());
+    if (setupApPassword == SETUP_AP_PASSWORD) Serial.println("Hinweis: Einrichtungs-WLAN nutzt noch das Standard-Passwort");
+  }
   esp_wifi_get_mac(WIFI_IF_STA, staMac);
   if (bridgeMode == MODE_BRIDGE) {
     // Nach WiFi.mode() registrieren, damit dieser Handler nach denen von ESP-IDF/Arduino laeuft.
@@ -774,6 +839,7 @@ void setup() {
   webServer.on("/networks", HTTP_GET, showNetworks);
   webServer.on("/save", HTTP_POST, saveSettings);
   webServer.on("/mode", HTTP_POST, saveMode);
+  webServer.on("/appass", HTTP_POST, saveApPassword);
   webServer.onNotFound(showHome);
   webServer.begin();
 

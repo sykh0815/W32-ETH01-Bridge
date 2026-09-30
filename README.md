@@ -1,184 +1,194 @@
-# WT32-ETH01 Ethernet-WLAN-Bridge (ESP32 Ethernet to WiFi Bridge)
+# WT32-ETH01 Ethernet to WiFi Bridge (ESP32 + LAN8720)
 
-[![Version](https://img.shields.io/badge/Version-2.1-1263a6)](#versionen)
-[![Plattform](https://img.shields.io/badge/ESP32-WT32--ETH01-green)](#hardware)
-[![PlatformIO](https://img.shields.io/badge/PlatformIO-Arduino%20Core%203.x-orange?logo=platformio)](#bauen-und-flashen)
-[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-yellow)](LICENSE)
+🇬🇧 **English** | 🇩🇪 [Deutsch](README.de.md)
+
+[![Version](https://img.shields.io/badge/Version-2.3-1263a6)](CHANGELOG.md)
+[![Platform](https://img.shields.io/badge/ESP32-WT32--ETH01-green)](#hardware)
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-Arduino%20Core%203.x-orange?logo=platformio)](#build-and-flash)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 [![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/sykh)
 
-**Version 2.1**
+**Version 2.3** – see the [changelog](CHANGELOG.md)
 
-Firmware für das **WT32-ETH01 v1.4** (ESP32 + LAN8720), die ein Gerät mit LAN-Anschluss per WLAN
-ins Netzwerk bringt: ein **WLAN-Adapter für Geräte ohne WLAN** oder eine **WLAN-Bridge für den
-Ethernet-Anschluss**, z. B. für Drucker, Smart-TV, Spielkonsole, NAS, SPS oder Messgeräte. Das Gerät
-wird per Kabel an den WT32-ETH01 angeschlossen, der WT32-ETH01 verbindet sich per WLAN mit dem Router.
+Firmware for the **WT32-ETH01 v1.4** (ESP32 + LAN8720) that brings a device with an Ethernet port
+into your WiFi network: a **WiFi adapter for devices without WiFi**, or a **wireless bridge for the
+Ethernet port** of a printer, smart TV, game console, NAS, PLC or measuring instrument. The device is
+connected to the WT32-ETH01 by cable, and the WT32-ETH01 connects to your router over WiFi.
 
 <p align="center">
-  <img src="docs/wt32-eth01.svg" alt="WT32-ETH01 Board mit RJ45-Buchse, LAN8720 PHY und ESP32-Modul (Illustration)" width="480">
+  <img src="docs/wt32-eth01.svg" alt="WT32-ETH01 board with RJ45 jack, LAN8720 PHY and ESP32 module (illustration)" width="480">
 </p>
 
 ```
-[ Gerät mit LAN ] ──Kabel── [ WT32-ETH01 ] ))) WLAN ))) [ Router ] ── Internet
+[ LAN device ] ──cable── [ WT32-ETH01 ] ))) WiFi ))) [ Router ] ── Internet
 ```
 
-> **English summary:** Arduino/PlatformIO firmware that turns a WT32-ETH01 (ESP32 + LAN8720) into an
-> **Ethernet to WiFi bridge / wireless client adapter**. Two modes: **NAT** (own DHCP subnet, several
-> devices) and **Bridge** (the wired device gets its IP directly from your router, MAC translation like
-> Espressif's sta2eth). Web interface with WiFi scan, signal strength and LAN client info.
-> No external libraries.
-
-## Webinterface
+## Web interface
 
 <p align="center">
-  <img src="docs/webinterface.png" alt="Webinterface der Bridge im Bridge-Modus: WLAN-Empfang, Infos zum Gerät am LAN-Port, WLAN-Suche und Auswahl der Betriebsart" width="420">
+  <img src="docs/webinterface.png" alt="Web interface in bridge mode: WiFi signal, LAN device info, WiFi scan and operating mode selection" width="420">
 </p>
 
-Das Webinterface im Bridge-Modus: WLAN-Empfang, Daten des Geräts am LAN-Port (IP-Adresse vom
-Router, Link-Geschwindigkeit, Paketzähler), WLAN-Suche und Auswahl der Betriebsart.
+The web interface in bridge mode: WiFi signal strength, details of the device on the LAN port
+(IP address from the router, link speed, packet counters), WiFi scan and operating mode selection.
+The interface itself is in German.
 
-## Funktionen
+## Features
 
-- **Zwei Betriebsarten**, umschaltbar im Webinterface:
-  - **NAT – eigenes Netzwerk** (Standard): eigenes Netz `192.168.50.0/24` am LAN-Port mit
-    DHCP-Server, Internetfreigabe über NAPT. Mehrere Geräte möglich (z. B. über einen Switch).
-    Datenrate bis ca. 10 Mbit/s.
-  - **Bridge – direkt ins Heimnetz** (experimentell): Das LAN-Gerät bekommt seine IP **direkt vom
-    Router**. Nur ein Gerät, nur IPv4. Datenrate über 30 Mbit/s (Details siehe unten).
-- **Webinterface** über ein eigenes Einrichtungs-WLAN:
-  - WLAN-Suche und Eingabe der Router-Zugangsdaten
-  - Anzeige der WLAN-Signalstärke
-  - Infos zum Gerät am LAN-Port: IP-Adresse, MAC-Adresse, Link-Geschwindigkeit/Duplex,
-    Verbindungsdauer, im Bridge-Modus zusätzlich Paketzähler
-- Zugangsdaten und Betriebsart werden dauerhaft im Flash (NVS) gespeichert.
-- Keine externen Bibliotheken nötig.
+- **Two operating modes**, selectable in the web interface:
+  - **NAT – own network** (default): separate subnet `192.168.50.0/24` on the LAN port with a DHCP
+    server, internet access through NAPT. Several devices possible (e.g. via a switch).
+    Data rate up to approx. 10 Mbit/s.
+  - **Bridge – straight into your home network** (experimental): the LAN device gets its IP address
+    **directly from your router**. One device only, IPv4 only. Data rate above 30 Mbit/s.
+- **Web interface** via a dedicated setup WiFi (password changeable in the web interface):
+  - WiFi scan and entry of the router credentials
+  - WiFi signal strength
+  - Info about the device on the LAN port: IP address, MAC address, link speed/duplex,
+    connection time, plus packet counters in bridge mode
+- Credentials and operating mode are stored permanently in flash (NVS).
+- No external libraries required.
 
 ## Hardware
 
-- WT32-ETH01 v1.4 von Wireless-Tag: ESP32-Modul, LAN8720-Ethernet-PHY, RJ45-Buchse (10/100 Mbit/s),
-  Versorgung mit 5 V **oder** 3,3 V
-- USB-TTL-Adapter mit **3,3 V**-Logik zum Flashen (z. B. CP2102 oder CH340)
+- WT32-ETH01 v1.4 by Wireless-Tag: ESP32 module, LAN8720 Ethernet PHY, RJ45 jack (10/100 Mbit/s),
+  powered by 5 V **or** 3.3 V
+- USB-to-serial adapter with **3.3 V** logic for flashing (e.g. CP2102 or CH340)
 
 | Adapter | WT32-ETH01 |
 |---------|------------|
 | TX      | RX0 (GPIO3) |
 | RX      | TX0 (GPIO1) |
 | GND     | GND |
-| 5V      | 5V (oder 3,3 V an 3V3, nur eines von beiden) |
+| 5V      | 5V (or 3.3 V to 3V3, never both) |
 
-Zum Flashen **IO0 mit GND verbinden** und dann das Board einschalten. Nach dem Flashen die Brücke
-entfernen und neu starten.
+To flash, **connect IO0 to GND** and then power up the board. Remove the jumper afterwards and
+restart.
 
-### Pinbelegung der Stiftleisten
+### Header pinout
 
-Laut [Wireless-Tag-Wiki](https://wiki.wireless-tag.com/docs/en/WT32-ETH01/board_features.html):
+According to the [Wireless-Tag wiki](https://wiki.wireless-tag.com/docs/en/WT32-ETH01/board_features.html):
 
-| Leiste 1 | Funktion | Leiste 2 | Funktion |
+| Header 1 | Function | Header 2 | Function |
 |----------|----------|----------|----------|
-| EN | Enable (aktiv high) | GND | Masse |
-| CFG | IO32 (Werksreset) | IO39 | nur Eingang |
-| 485_EN | IO33 (RS485-Enable) | IO36 | nur Eingang |
+| EN | Enable (active high) | GND | Ground |
+| CFG | IO32 (factory reset) | IO39 | input only |
+| 485_EN | IO33 (RS485 enable) | IO36 | input only |
 | RXD | IO5 (UART2 RX) | IO15 | GPIO |
 | TXD | IO17 (UART2 TX) | IO14 | GPIO |
-| GND | Masse | IO12 | GPIO |
-| 3V3 | 3,3 V Ein-/Ausgang | IO35 | nur Eingang |
-| GND | Masse | IO4 | GPIO |
-| 5V | 5 V Ein-/Ausgang | IO2 | GPIO |
-| LINK | Link-LED | GND | Masse |
+| GND | Ground | IO12 | GPIO |
+| 3V3 | 3.3 V in/out | IO35 | input only |
+| GND | Ground | IO4 | GPIO |
+| 5V | 5 V in/out | IO2 | GPIO |
+| LINK | Link LED | GND | Ground |
 
-Zum Flashen dienen die Programmier-Pins **TXD0 (IO1), RXD0 (IO3), GND, 3V3, EN und IO0**.
+Flashing uses the programming pins **TXD0 (IO1), RXD0 (IO3), GND, 3V3, EN and IO0**.
 
-Verwendete Pins intern: GPIO16 (Oszillator-Enable LAN8720), GPIO23 (MDC), GPIO18 (MDIO),
-GPIO0 (50-MHz-RMII-Takt-Eingang), PHY-Adresse 1.
+Pins used internally: GPIO16 (LAN8720 oscillator enable), GPIO23 (MDC), GPIO18 (MDIO),
+GPIO0 (50 MHz RMII clock input), PHY address 1.
 
-## Bauen und Flashen
+## Build and flash
 
-Voraussetzung: [PlatformIO](https://platformio.org/) (`brew install platformio`).
+A detailed step-by-step guide (including a way without the command line) is in the
+**[tutorial](docs/TUTORIAL.en.md)**.
+
+Short version with [PlatformIO](https://platformio.org/):
 
 ```bash
-pio run -t upload        # bauen und flashen
-pio device monitor       # serielle Ausgabe (115200 Baud)
+pio run -t upload        # build and flash
+pio device monitor       # serial output (115200 baud)
 ```
 
-Die Firmware braucht **Arduino-Core 3.x (ESP-IDF 5)**. Die `platformio.ini` nutzt dafür die
-[pioarduino](https://github.com/pioarduino/platform-espressif32)-Plattform. Mit dem Standard-Paket
-`platform = espressif32` (Arduino-Core 2.x) lässt sich der Ethernet-Teil nicht kompilieren.
+The firmware requires **Arduino Core 3.x (ESP-IDF 5)**. `platformio.ini` uses the
+[pioarduino](https://github.com/pioarduino/platform-espressif32) platform for this. With the stock
+`platform = espressif32` package (Arduino Core 2.x) the Ethernet part does not compile.
 
-## Einrichtung
+## Setup
 
-1. Mit dem WLAN **`WT32-Bridge-Setup`** verbinden (Standard-Passwort: `BridgeSetup26`).
-2. `http://192.168.4.1` öffnen.
-3. Router-WLAN auswählen, Passwort eingeben, speichern.
-4. Gerät per Kabel am LAN-Port anschließen.
+1. Connect to the WiFi **`WT32-Bridge-Setup`**. On first start it is **open (no password)**.
+2. Open `http://192.168.4.1`.
+3. Select your router's WiFi, enter the password, save.
+4. Set a password for the setup WiFi (the web interface shows a red warning until you do).
+5. Connect the device to the LAN port.
 
-> **Hinweis:** Das Passwort des Einrichtungs-WLANs ist im Quellcode festgelegt
-> (`SETUP_AP_PASSWORD` in `src/main.cpp`). Bitte vor dem Einsatz ändern.
+## WiFi passwords
 
-## Betriebsarten im Detail
+The bridge uses two passwords:
 
-### NAT – eigenes Netzwerk
+| Password | Where is it stored? | How to change it? |
+|----------|---------------------|-------------------|
+| **Setup WiFi** `WT32-Bridge-Setup` (initially **open**, no password) | in the ESP32's flash (NVS); an optional default can be set in `SETUP_AP_PASSWORD` in `src/main.cpp` | in the web interface under "Einrichtungs-WLAN" (8–63 characters), the bridge restarts |
+| **Router WiFi** | in the ESP32's flash (NVS), not in the code | enter it again in the web interface under "Router-WLAN" and click "Speichern und verbinden" |
 
-Die Bridge baut am LAN-Port ein eigenes Netz auf und vergibt die Adressen selbst. Ideal, wenn
-mehrere Geräte über einen Switch angeschlossen werden sollen. Datenraten bis ca. 10 Mbit/s.
+> **Important:** on first start the setup WiFi is open, so anyone in range could change the
+> settings. The web interface shows a prominent red warning until you set a password; do this
+> right after setup. Details: [tutorial, WiFi passwords](docs/TUTORIAL.en.md#7-find-and-change-the-wifi-passwords).
 
-- Bridge-Adresse im LAN: `192.168.50.1` (Gateway)
-- DHCP-Bereich: `192.168.50.x`, DNS: `1.1.1.1`
-- Internetverkehr wird per NAPT über das WLAN geleitet.
+## Operating modes in detail
 
-### Bridge – direkt ins Heimnetz (experimentell)
+### NAT – own network
 
-Das angeschlossene Gerät erhält seine IP-Adresse direkt vom Router und ist im Heimnetz wie jedes
-andere Gerät erreichbar. Datenraten über 30 Mbit/s.
+The bridge creates its own network on the LAN port and assigns the addresses itself. Ideal if you
+want to connect several devices through a switch. Data rates up to approx. 10 Mbit/s.
 
-Ein WLAN-Client darf nur Pakete mit seiner eigenen MAC-Adresse senden. Die Bridge schreibt deshalb
-die MAC-Adressen in den Paketen um, auch in DHCP- und ARP-Paketen. Das gleiche Verfahren nutzt
-Espressifs Beispiel
-[`sta2eth`](https://github.com/espressif/esp-idf/tree/master/examples/network/sta2eth).
+- Bridge address on the LAN: `192.168.50.1` (gateway)
+- DHCP range: `192.168.50.x`, DNS: `1.1.1.1`
+- Internet traffic is routed over WiFi using NAPT.
 
-Einschränkungen:
+### Bridge – straight into your home network (experimental)
 
-- nur **ein** Gerät am LAN-Port, nur **IPv4**
-- im Router erscheint das Gerät mit der **WLAN-MAC der Bridge** (wird im Webinterface angezeigt).
-  Feste IP-Zuweisungen im Router müssen auf diese MAC eingetragen werden.
-- die Bridge hat im Router-Netz keine eigene IP; das Webinterface ist nur über das
-  Einrichtungs-WLAN erreichbar
-- nutzt interne ESP-IDF-WLAN-Funktionen (`esp_wifi_internal_*`), die sich mit Core-Updates
-  ändern können
-- nach dem Umschalten der Betriebsart am LAN-Gerät kurz das Kabel ziehen, damit es eine neue
-  Adresse holt
+The connected device gets its IP address directly from your router and is reachable in your home
+network like any other device. Data rates above 30 Mbit/s.
 
-## Projektstruktur
+A WiFi client may only send frames with its own MAC address. The bridge therefore rewrites the MAC
+addresses in the frames, including DHCP and ARP packets. Espressif's
+[`sta2eth`](https://github.com/espressif/esp-idf/tree/master/examples/network/sta2eth) example uses
+the same technique.
+
+Limitations:
+
+- **one** device on the LAN port, **IPv4** only
+- the router sees the device with the **WiFi MAC address of the bridge** (shown in the web
+  interface). Static IP reservations in the router must use this MAC.
+- the bridge has no IP address of its own in the router's network; the web interface is only
+  reachable through the setup WiFi
+- uses internal ESP-IDF WiFi functions (`esp_wifi_internal_*`), which may change with core updates
+- after switching the operating mode, unplug the cable of the LAN device briefly so it requests a
+  new address
+
+## Project structure
 
 ```
-platformio.ini            Build-Konfiguration
-src/main.cpp              Firmware
-ANLEITUNG.md              Schritt-für-Schritt-Anleitung zum Flashen und Fehlersuche
-docs/webinterface.png     Screenshot des Webinterface
-docs/wt32-eth01.svg       Illustration des Boards
-docs/social-preview.png   Vorschaubild für GitHub
-LICENSE                   MIT-Lizenz
-backup/main_nat_only.cpp  ältere Version nur mit NAT-Modus
+platformio.ini            build configuration
+src/main.cpp              firmware
+docs/TUTORIAL.en.md       tutorial: build and flash (English)
+docs/TUTORIAL.de.md       Tutorial: Kompilieren und Flashen (Deutsch)
+docs/webinterface.png     screenshot of the web interface
+docs/wt32-eth01.svg       board illustration
+docs/social-preview.png   GitHub preview image
+backup/main_nat_only.cpp  older version with NAT mode only
+CHANGELOG.md              changelog (English)
+CHANGELOG.de.md           Änderungsprotokoll (Deutsch)
+LICENSE                   MIT license
 ```
 
-## Versionen
+## Versions
 
-**2.1**
-- Betriebsart **Bridge** (IP direkt vom Router) zusätzlich zu NAT, umschaltbar im Webinterface
-- Betriebsarten als Karten mit Piktogrammen und Angabe der Datenrate
-- Infos zum Gerät am LAN-Port (IP, MAC, Link-Geschwindigkeit, Paketzähler)
-- WLAN-Suche funktioniert auch, solange noch keine Router-Verbindung besteht
-- Versionsnummer im Webinterface und in der seriellen Ausgabe
+Current version: **2.3** – setup WiFi starts without a password, with a prominent warning in the web interface until one is set.
+All changes are listed in the **[changelog](CHANGELOG.md)**.
 
-## Unterstützen
+## Support
 
-Wenn dir das Projekt hilft, freue ich mich über einen Kaffee:
+If this project helps you, I'd be happy about a coffee:
 
 <a href="https://buymeacoffee.com/sykh"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy me a coffee"></a>
 
-## Fehlersuche
+## Troubleshooting
 
-Die serielle Ausgabe (115200 Baud) zeigt den Zustand an, z. B.:
+The serial output (115200 baud) shows the current state, for example:
 
 ```
+WT32-ETH01 Ethernet-WLAN-Bridge, Firmware 2.3
 Betriebsart: NAT
 DHCP server started on interface ETH_LAN with IP: 192.168.50.1
 Ethernet-LAN: 192.168.50.1, DHCP-Server laeuft
@@ -186,9 +196,10 @@ Ethernet-Kabel verbunden (100 Mbit/s, Vollduplex)
 LAN-Geraet AA:BB:CC:DD:EE:FF hat 192.168.50.2 bekommen
 ```
 
-Weitere Hinweise stehen in der [ANLEITUNG.md](ANLEITUNG.md).
+The log messages are in German. More hints are in the
+[tutorial](docs/TUTORIAL.en.md#8-troubleshooting).
 
-## Lizenz
+## License
 
-Veröffentlicht unter der [MIT-Lizenz](LICENSE): Der Code darf frei verwendet, verändert und
-weitergegeben werden, auch kommerziell. Der Copyright-Hinweis muss dabei erhalten bleiben.
+Released under the [MIT license](LICENSE): you may use, modify and distribute the code freely,
+including commercially, as long as the copyright notice is kept.

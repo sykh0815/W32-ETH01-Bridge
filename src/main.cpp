@@ -32,6 +32,7 @@ void showStatus();
 void showNetworks();
 void showHome();
 void connectToRouter();
+void resumeRouterConnection();
 void saveSettings();
 void saveMode();
 void onEthernetEvent(void *argument, esp_event_base_t eventBase, int32_t eventId, void *eventData);
@@ -45,6 +46,7 @@ void startLanServices();
 
 constexpr int ETH_PHY_POWER_PIN = 16;
 constexpr int ETH_PHY_ADDRESS = 1;
+constexpr char FIRMWARE_VERSION[] = "2.1";
 constexpr char SETUP_AP_SSID[] = "WT32-Bridge-Setup";
 constexpr char SETUP_AP_PASSWORD[] = "BridgeSetup26";
 
@@ -60,6 +62,8 @@ volatile bool ethernetLanReady = false;
 volatile bool wifiConnected = false;
 volatile bool ethernetServicesPending = false;
 uint32_t restartAtMs = 0;
+bool scanPausedConnect = false;  // Verbindungsversuche waehrend eines WLAN-Scans angehalten
+uint32_t scanStartedMs = 0;
 
 // Informationen ueber die Geraete am LAN-Port
 struct LanClient {
@@ -340,7 +344,7 @@ esp_err_t onWifiFrame(void *buffer, uint16_t len, void *eb) {
 // ---------------------------------------------------------------------------
 
 String pageHeader(const String &title) {
-  return "<!doctype html><html lang='de'><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>" + title + "</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:30px auto;padding:0 18px;background:#f2f6fa;color:#17212b}.card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 18px #0002}h1{margin-top:0;color:#1263a6}h2{font-size:18px;margin:26px 0 4px}.status{padding:12px 14px;margin:12px 0;border-radius:10px;background:#edf5fd}.ok{color:#08783d}.wait{color:#875b00}.bad{color:#a32020}.meter{display:flex;align-items:flex-end;gap:4px;height:38px;margin:10px 0 3px}.bar{width:13px;border-radius:3px 3px 0 0;background:#d3dae1}.bar.on.good{background:#1a9b59}.bar.on.fair{background:#dd9a17}.bar.on.weak{background:#ce3e3e}label{display:block;font-weight:bold;margin-top:16px}input{box-sizing:border-box;width:100%;padding:12px;margin-top:6px;border:1px solid #aac;border-radius:8px;font-size:16px}label.opt{font-weight:normal;margin-top:10px}label.opt input{width:auto;margin:0 8px 0 0}button{margin-top:22px;background:#1263a6;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-size:16px;cursor:pointer}.secondary{margin-top:12px;background:#587080}.network{display:block;width:100%;text-align:left;margin-top:8px;padding:11px;border:1px solid #cbd8e3;border-radius:8px;background:#f8fbfe;color:#17212b}.network b{display:block}.network small,small{color:#4b5865}table.info{width:100%;border-collapse:collapse;margin-top:8px}table.info td{padding:5px 4px;border-top:1px solid #d6e2ee;vertical-align:top}table.info td:first-child{color:#4b5865;width:45%}</style></head><body><div class='card'>";
+  return "<!doctype html><html lang='de'><head><meta name='viewport' content='width=device-width,initial-scale=1'><title>" + title + "</title><style>body{font-family:Arial,sans-serif;max-width:700px;margin:30px auto;padding:0 18px;background:#f2f6fa;color:#17212b}.card{background:#fff;border-radius:16px;padding:24px;box-shadow:0 4px 18px #0002}h1{margin-top:0;color:#1263a6}h2{font-size:18px;margin:26px 0 4px}.status{padding:12px 14px;margin:12px 0;border-radius:10px;background:#edf5fd}.ok{color:#08783d}.wait{color:#875b00}.bad{color:#a32020}.meter{display:flex;align-items:flex-end;gap:4px;height:38px;margin:10px 0 3px}.bar{width:13px;border-radius:3px 3px 0 0;background:#d3dae1}.bar.on.good{background:#1a9b59}.bar.on.fair{background:#dd9a17}.bar.on.weak{background:#ce3e3e}label{display:block;font-weight:bold;margin-top:16px}input{box-sizing:border-box;width:100%;padding:12px;margin-top:6px;border:1px solid #aac;border-radius:8px;font-size:16px}label.opt{font-weight:normal;margin-top:10px}label.opt input{width:auto;margin:0 8px 0 0}label.mode{display:flex;gap:14px;align-items:flex-start;font-weight:normal;margin-top:12px;padding:14px;border:2px solid #cbd8e3;border-radius:12px;cursor:pointer;background:#fff}label.mode:has(input:checked){border-color:#1263a6;background:#f3f8fd}label.mode input{width:auto;margin:4px 0 0}.mode svg{flex:none;width:46px;height:46px;color:#1263a6}.mode b{display:block;font-size:17px;margin-bottom:4px}.mode p{margin:6px 0 0;color:#4b5865;font-size:14px;line-height:1.4}.badge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:bold}.badge.slow{background:#fdf1dc;color:#875b00}.badge.fast{background:#e3f4ea;color:#08783d}button{margin-top:22px;background:#1263a6;color:#fff;border:0;border-radius:8px;padding:12px 18px;font-size:16px;cursor:pointer}.secondary{margin-top:12px;background:#587080}.network{display:block;width:100%;text-align:left;margin-top:8px;padding:11px;border:1px solid #cbd8e3;border-radius:8px;background:#f8fbfe;color:#17212b}.network b{display:block}.network small,small{color:#4b5865}table.info{width:100%;border-collapse:collapse;margin-top:8px}table.info td{padding:5px 4px;border-top:1px solid #d6e2ee;vertical-align:top}table.info td:first-child{color:#4b5865;width:45%}</style></head><body><div class='card'>";
 }
 
 String signalMeterHtml() {
@@ -385,22 +389,81 @@ String lanStatusJson() {
 
 void showStatus() {
   const bool hasRouterIp = bridgeMode == MODE_NAT && wifiConnected;
-  const String json = "{\"mode\":\"" + String(bridgeMode == MODE_BRIDGE ? "bridge" : "nat") + "\",\"wifi\":" + String(wifiConnected ? "true" : "false") + ",\"ssid\":\"" + jsonEscape(WiFi.SSID()) + "\",\"ip\":\"" + (hasRouterIp ? WiFi.localIP().toString() : String("")) + "\",\"rssi\":" + String(wifiConnected ? WiFi.RSSI() : 0) + ",\"percent\":" + String(wifiPercent()) + ",\"quality\":\"" + signalClass(wifiPercent()) + "\",\"ethLink\":" + String(ethernetLinkUp ? "true" : "false") + ",\"dhcp\":" + String(ethernetLanReady ? "true" : "false") + ",\"lan\":" + lanStatusJson() + "}";
+  const String json = "{\"version\":\"" + String(FIRMWARE_VERSION) + "\",\"mode\":\"" + String(bridgeMode == MODE_BRIDGE ? "bridge" : "nat") + "\",\"wifi\":" + String(wifiConnected ? "true" : "false") + ",\"ssid\":\"" + jsonEscape(WiFi.SSID()) + "\",\"ip\":\"" + (hasRouterIp ? WiFi.localIP().toString() : String("")) + "\",\"rssi\":" + String(wifiConnected ? WiFi.RSSI() : 0) + ",\"percent\":" + String(wifiPercent()) + ",\"quality\":\"" + signalClass(wifiPercent()) + "\",\"ethLink\":" + String(ethernetLinkUp ? "true" : "false") + ",\"dhcp\":" + String(ethernetLanReady ? "true" : "false") + ",\"lan\":" + lanStatusJson() + "}";
   webServer.send(200, "application/json", json);
 }
 
+// Setzt unterbrochene Verbindungsversuche zum Router nach einem WLAN-Scan fort.
+void resumeRouterConnection() {
+  if (!scanPausedConnect) return;
+  scanPausedConnect = false;
+  WiFi.setAutoReconnect(true);
+  connectToRouter();
+}
+
+// Asynchroner WLAN-Scan: /networks?start=1 startet, danach fragt die Seite /networks ab,
+// bis das Ergebnis da ist. So blockiert der Scan den Webserver nicht.
 void showNetworks() {
-  const int count = WiFi.scanNetworks(false, true);
-  String json = "[";
-  for (int i = 0; i < count; ++i) {
-    if (i) json += ',';
+  int state = WiFi.scanComplete();
+  if (webServer.hasArg("start") && state != WIFI_SCAN_RUNNING) {
+    WiFi.scanDelete();
+    if (!wifiConnected && !routerSsid.isEmpty()) {
+      // Solange der ESP32 versucht, sich mit dem Router zu verbinden, lehnt der WLAN-Treiber
+      // einen Scan ab ("STA is connecting"). Daher die Versuche fuer die Dauer des Scans anhalten.
+      WiFi.setAutoReconnect(false);
+      WiFi.disconnect(false, false);
+      scanPausedConnect = true;
+      delay(200);
+    }
+    scanStartedMs = millis();
+    state = WiFi.scanNetworks(true, true);
+    if (state == WIFI_SCAN_FAILED) {
+      delay(500);
+      state = WiFi.scanNetworks(true, true);
+    }
+    if (state == WIFI_SCAN_FAILED) {
+      Serial.println("WLAN-Scan konnte nicht gestartet werden");
+      resumeRouterConnection();
+      webServer.send(200, "application/json", "{\"state\":\"failed\"}");
+      return;
+    }
+    webServer.send(200, "application/json", "{\"state\":\"running\"}");
+    return;
+  }
+
+  if (state == WIFI_SCAN_RUNNING) {
+    if (millis() - scanStartedMs < 15000) {
+      webServer.send(200, "application/json", "{\"state\":\"running\"}");
+      return;
+    }
+    WiFi.scanDelete();
+    state = WIFI_SCAN_FAILED;
+  }
+  if (state < 0) {
+    resumeRouterConnection();
+    webServer.send(200, "application/json", "{\"state\":\"failed\"}");
+    return;
+  }
+
+  String json = "{\"state\":\"done\",\"networks\":[";
+  bool first = true;
+  for (int i = 0; i < state; ++i) {
+    const String ssid = WiFi.SSID(i);
+    bool duplicate = false;  // gleiche SSID mehrfach (Mesh/Repeater): nur den staerksten Eintrag zeigen
+    for (int j = 0; j < i && !ssid.isEmpty(); ++j) {
+      if (WiFi.SSID(j) == ssid && WiFi.RSSI(j) >= WiFi.RSSI(i)) { duplicate = true; break; }
+    }
+    if (duplicate) continue;
+    if (!first) json += ',';
+    first = false;
     const int rssi = WiFi.RSSI(i);
     const int percent = constrain((rssi + 90) * 100 / 60, 0, 100);
     const wifi_auth_mode_t encryption = WiFi.encryptionType(i);
-    json += "{\"ssid\":\"" + jsonEscape(WiFi.SSID(i)) + "\",\"rssi\":" + String(rssi) + ",\"percent\":" + String(percent) + ",\"encryption\":\"" + jsonEscape(encryptionName(encryption)) + "\",\"secured\":" + String(encryption == WIFI_AUTH_OPEN ? "false" : "true") + "}";
+    json += "{\"ssid\":\"" + jsonEscape(ssid) + "\",\"rssi\":" + String(rssi) + ",\"percent\":" + String(percent) + ",\"encryption\":\"" + jsonEscape(encryptionName(encryption)) + "\",\"secured\":" + String(encryption == WIFI_AUTH_OPEN ? "false" : "true") + "}";
   }
-  json += "]";
+  json += "]}";
   WiFi.scanDelete();
+  resumeRouterConnection();
   webServer.send(200, "application/json", json);
 }
 
@@ -435,12 +498,35 @@ void showHome() {
     "if(br){h+=row('Adressvergabe','direkt durch den Router');if(l.staMac)h+=row('Ger\\u00e4t erscheint im Router als MAC',l.staMac);h+=row('Frames LAN &rarr; WLAN',l.toWifi);h+=row('Frames WLAN &rarr; LAN',l.toLan);h+=row('Verworfen',l.dropped);}"
     "else{h+=row('Gateway / DNS','192.168.50.1 / 1.1.1.1');if(l.leaseMinutes)h+=row('Lease-Dauer',l.leaseMinutes+' min');if(l.bridgeMac)h+=row('MAC der Bridge (LAN)',l.bridgeMac);}"
     "box.innerHTML='<table class=\\'info\\'>'+h+'</table>';}"
-    "function scan(){let box=document.getElementById('networks');box.textContent='Suche nach WLANs ...';fetch('/networks').then(r=>r.json()).then(list=>{box.textContent='';if(!list.length){box.textContent='Keine WLANs gefunden.';return;}list.forEach(n=>{let b=document.createElement('button');b.type='button';b.className='network';let name=document.createElement('b');name.textContent=n.ssid||'(verstecktes WLAN)';let detail=document.createElement('small');detail.textContent=n.rssi+' dBm - '+n.percent+' % - '+n.encryption+(n.secured?' (gesichert)':'');b.append(name,detail);b.onclick=()=>{document.querySelector('[name=ssid]').value=n.ssid;box.textContent='Ausgew\\u00e4hlt: '+n.ssid;};box.appendChild(b);});}).catch(()=>box.textContent='Die WLAN-Suche ist fehlgeschlagen.');}"
+    "function scan(){document.getElementById('networks').textContent='Suche nach WLANs ...';poll(true,0);}"
+    "function poll(start,errors){fetch('/networks'+(start?'?start=1':'')).then(r=>r.json()).then(s=>{"
+    "if(s.state=='running'){setTimeout(()=>poll(false,0),800);return;}"
+    "if(s.state!='done'){document.getElementById('networks').textContent='Die WLAN-Suche ist fehlgeschlagen. Bitte erneut versuchen.';return;}"
+    "showNetworks(s.networks);}).catch(()=>{if(errors<8)setTimeout(()=>poll(false,errors+1),1500);else document.getElementById('networks').textContent='Die WLAN-Suche ist fehlgeschlagen. Bitte erneut versuchen.';});}"
+    "function showNetworks(list){let box=document.getElementById('networks');box.textContent='';if(!list.length){box.textContent='Keine WLANs gefunden.';return;}"
+    "list.forEach(n=>{let b=document.createElement('button');b.type='button';b.className='network';let name=document.createElement('b');name.textContent=n.ssid||'(verstecktes WLAN)';"
+    "let detail=document.createElement('small');detail.textContent=n.rssi+' dBm - '+n.percent+' % - '+n.encryption+(n.secured?' (gesichert)':'');b.append(name,detail);"
+    "b.onclick=()=>{document.querySelector('[name=ssid]').value=n.ssid;box.textContent='Ausgew\\u00e4hlt: '+n.ssid;};box.appendChild(b);});}"
     "status();setInterval(status,2000);</script>";
 
+  // Piktogramme: NAT = ein Knoten verteilt auf mehrere Geraete, Bridge = Bruecke direkt ins Heimnetz
+  const char *natIcon = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'>"
+    "<rect x='9' y='2' width='6' height='5' rx='1'/><path d='M12 7v4M5 11h14M5 11v4M12 11v4M19 11v4'/>"
+    "<rect x='2.5' y='15' width='5' height='5' rx='1'/><rect x='9.5' y='15' width='5' height='5' rx='1'/><rect x='16.5' y='15' width='5' height='5' rx='1'/></svg>";
+  const char *bridgeIcon = "<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'>"
+    "<path d='M3 15Q12 3 21 15'/><path d='M2 15h20M7.5 10.5V15M12 9v6M16.5 10.5V15M4 15v5M20 15v5'/></svg>";
+
   const String modeForm = "<h2>Betriebsart</h2><form method='post' action='/mode'>"
-    "<label class='opt'><input type='radio' name='mode' value='nat'" + String(bridge ? "" : " checked") + ">NAT &ndash; eigenes Netz 192.168.50.x, mehrere Ger&auml;te m&ouml;glich</label>"
-    "<label class='opt'><input type='radio' name='mode' value='bridge'" + String(bridge ? " checked" : "") + ">Bridge &ndash; IP direkt vom Router, nur <b>ein</b> Ger&auml;t, nur IPv4</label>"
+    "<label class='mode'><input type='radio' name='mode' value='nat'" + String(bridge ? "" : " checked") + ">" + natIcon +
+    "<span><b>NAT &ndash; eigenes Netzwerk</b>"
+    "<p>Die Bridge baut am LAN-Port ein eigenes Netz (192.168.50.x) auf und vergibt die Adressen selbst. "
+    "Ideal, wenn mehrere Ger&auml;te &uuml;ber einen Switch angeschlossen werden sollen.</p>"
+    "<span class='badge slow'>Datenrate bis ca. 10 Mbit/s</span></span></label>"
+    "<label class='mode'><input type='radio' name='mode' value='bridge'" + String(bridge ? " checked" : "") + ">" + bridgeIcon +
+    "<span><b>Bridge &ndash; direkt ins Heimnetz</b>"
+    "<p>Das angeschlossene Ger&auml;t erh&auml;lt seine IP-Adresse direkt vom Router und ist im Heimnetz wie jedes andere Ger&auml;t erreichbar. "
+    "F&uuml;r genau ein Ger&auml;t, nur IPv4.</p>"
+    "<span class='badge fast'>Datenrate &uuml;ber 30 Mbit/s</span></span></label>"
     "<button type='submit'>&Uuml;bernehmen und neu starten</button></form>";
 
   const String footer = bridge
@@ -453,7 +539,7 @@ void showHome() {
     "<form method='post' action='/save'><label>WLAN-Name des Routers<input name='ssid' maxlength='32' value='" + htmlEscape(routerSsid) + "' required></label>"
     "<label>WLAN-Passwort des Routers<input name='password' type='password' maxlength='63' placeholder='Nur &auml;ndern, wenn n&ouml;tig'></label>"
     "<button type='submit'>Speichern und verbinden</button></form>" +
-    modeForm + footer + script + "</div></body></html>";
+    modeForm + footer + "<p><small>Firmware-Version " + String(FIRMWARE_VERSION) + "</small></p>" + script + "</div></body></html>";
   webServer.send(200, "text/html; charset=utf-8", html);
 }
 
@@ -670,6 +756,7 @@ void setup() {
   routerSsid = preferences.getString("ssid", "");
   routerPassword = preferences.getString("password", "");
   bridgeMode = preferences.getUChar("mode", MODE_NAT) == MODE_BRIDGE ? MODE_BRIDGE : MODE_NAT;
+  Serial.printf("WT32-ETH01 Ethernet-WLAN-Bridge, Firmware %s\n", FIRMWARE_VERSION);
   Serial.printf("Betriebsart: %s\n", bridgeMode == MODE_BRIDGE ? "Bridge" : "NAT");
 
   WiFi.mode(WIFI_MODE_APSTA);
@@ -701,6 +788,11 @@ void setup() {
 void loop() {
   if (ethernetServicesPending) startLanServices();
   webServer.handleClient();
+  // Falls die Seite geschlossen wurde, bevor das Scan-Ergebnis abgeholt war
+  if (scanPausedConnect && millis() - scanStartedMs > 20000) {
+    WiFi.scanDelete();
+    resumeRouterConnection();
+  }
   if (restartAtMs != 0 && static_cast<int32_t>(millis() - restartAtMs) >= 0) {
     ESP.restart();
   }
